@@ -9,6 +9,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
+        /* ===== 样式（与之前一致，仅补充新增组件样式） ===== */
         * {
             margin: 0;
             padding: 0;
@@ -126,6 +127,7 @@
             font-size: 13px;
             font-weight: 500;
             color: #4a5a6e;
+            white-space: nowrap;
         }
         .filter-bar input[type="date"],
         .filter-bar input[type="text"] {
@@ -136,7 +138,7 @@
             background: #fafcff;
         }
         .filter-bar input[type="text"] {
-            min-width: 140px;
+            min-width: 120px;
         }
         .date-picker-wrapper {
             position: relative;
@@ -573,8 +575,6 @@
         #fileInput {
             display: none;
         }
-
-        /* 周复盘弹窗 */
         .review-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -621,7 +621,6 @@
             color: #6b7a8f;
             font-size: 11px;
         }
-
         @media (max-width: 700px) {
             .modal .form-row {
                 grid-template-columns: 1fr;
@@ -651,7 +650,9 @@
             <input type="file" id="fileInput" accept=".xlsx,.xls" />
         </header>
 
+        <!-- ===== 筛选栏（新增 ASIN 和型号） ===== -->
         <div class="filter-bar">
+            <!-- 日期 -->
             <div class="group" style="flex-wrap: wrap; gap: 8px;">
                 <label>📅 日期</label>
                 <div class="date-picker-wrapper" id="datePickerWrapper">
@@ -674,10 +675,24 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 活动搜索 -->
             <div class="group">
                 <label>🔍 活动</label>
                 <input type="text" id="campaignSearch" placeholder="搜索活动名称..." />
             </div>
+
+            <!-- 新增：投放产品筛选（ASIN + 型号） -->
+            <div class="group">
+                <label>📦 投放 ASIN</label>
+                <input type="text" id="asinSearch" placeholder="搜索 ASIN..." />
+            </div>
+            <div class="group">
+                <label>🏷️ 投放型号</label>
+                <input type="text" id="modelSearch" placeholder="搜索型号..." />
+            </div>
+
+            <!-- 应用/重置 -->
             <div class="group">
                 <button class="btn btn-primary btn-sm" id="applyFilterBtn">应用</button>
                 <button class="btn btn-outline btn-sm" id="resetFilterBtn">重置</button>
@@ -711,7 +726,7 @@
                     <table>
                         <thead id="tableHead">
                             <tr>
-                                <th>日期</th><th>活动名称</th><th>类型</th><th>策略</th><th>预算</th>
+                                <th>日期</th><th>活动名称</th><th>ASIN</th><th>型号</th><th>类型</th><th>策略</th><th>预算</th>
                                 <th>花费</th><th>曝光</th><th>点击</th><th>CTR</th><th>转化</th>
                                 <th>销售额</th><th>ACOS</th><th>CPC</th>
                                 <th style="width:70px;">操作</th>
@@ -741,7 +756,7 @@
         <div class="modal">
             <h3 id="modalTitle">📊 添加广告数据</h3>
 
-            <!-- 操作意图（新增） -->
+            <!-- 操作意图 -->
             <div class="section-title">🎯 操作意图</div>
             <div class="form-row">
                 <div class="form-group suggest-box">
@@ -761,13 +776,29 @@
                 <div class="suggest-list" id="suggestAction"></div>
             </div>
 
-            <!-- 操作前数据对比（新增） -->
+            <!-- 操作前数据对比 -->
             <div class="section-divider"></div>
             <div class="section-title">📊 操作前数据（用于对比效果）</div>
             <div class="form-row">
                 <div class="form-group"><label>操作前 ACOS (%)</label><input type="number" id="fBeforeAcos" step="0.1" min="0" placeholder="例如 35.0" /></div>
                 <div class="form-group"><label>操作前 花费 ($)</label><input type="number" id="fBeforeSpend" step="0.01" min="0" placeholder="例如 12.50" /></div>
                 <div class="form-group"><label>操作前 转化 (单)</label><input type="number" id="fBeforeConversions" step="1" min="0" placeholder="例如 3" /></div>
+            </div>
+
+            <!-- 新增：投放 ASIN 和型号 -->
+            <div class="section-divider"></div>
+            <div class="section-title">📦 投放产品</div>
+            <div class="form-row">
+                <div class="form-group suggest-box">
+                    <label>投放 ASIN</label>
+                    <input type="text" id="fAsin" placeholder="例如 B0XXXXX" autocomplete="off" />
+                    <div class="suggest-list" id="suggestAsin"></div>
+                </div>
+                <div class="form-group suggest-box">
+                    <label>投放型号</label>
+                    <input type="text" id="fModel" placeholder="例如 VC-156401E" autocomplete="off" />
+                    <div class="suggest-list" id="suggestModel"></div>
+                </div>
             </div>
 
             <div class="section-divider"></div>
@@ -869,6 +900,7 @@
         const STORAGE_KEY_LOGS = 'adDashboardLogs';
         const STORAGE_KEY_COLS = 'adDashboardCustomCols';
         const STORAGE_KEY_SUGGEST = 'adDashboardSuggests';
+        const STORAGE_KEY_MODEL_MAP = 'adDashboardModelMap'; // { model: { asins: [], supplyPrice: number } }
 
         let records = [];
         let logs = [];
@@ -877,15 +909,26 @@
         let filterStart = '';
         let filterEnd = '';
         let filterCampaign = '';
-        let suggestData = { phenomenon: [], reason: [], action: [] };
+        let filterAsin = '';
+        let filterModel = '';
+        let suggestData = { phenomenon: [], reason: [], action: [], asin: [], model: [] };
+        let modelMap = {}; // 型号映射
 
         function loadAll() {
             try { records = JSON.parse(localStorage.getItem(STORAGE_KEY_DATA)) || []; } catch { records = []; }
             try { logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS)) || []; } catch { logs = []; }
             try { customCols = JSON.parse(localStorage.getItem(STORAGE_KEY_COLS)) || []; } catch { customCols = []; }
             try { suggestData = JSON.parse(localStorage.getItem(STORAGE_KEY_SUGGEST)) || { phenomenon: [], reason: [],
-                    action: [] }; } catch { suggestData = { phenomenon: [], reason: [], action: [] }; }
+                    action: [], asin: [], model: [] }; } catch { suggestData = { phenomenon: [], reason: [], action: [],
+                    asin: [], model: [] }; }
+            try { modelMap = JSON.parse(localStorage.getItem(STORAGE_KEY_MODEL_MAP)) || {}; } catch { modelMap = {}; }
             records = records.map(r => { if (!r.custom) r.custom = {}; return r; });
+            // 兼容旧记录
+            records = records.map(r => {
+                if (!r.asin) r.asin = '';
+                if (!r.model) r.model = '';
+                return r;
+            });
         }
 
         function saveAll() {
@@ -893,6 +936,7 @@
             localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
             localStorage.setItem(STORAGE_KEY_COLS, JSON.stringify(customCols));
             localStorage.setItem(STORAGE_KEY_SUGGEST, JSON.stringify(suggestData));
+            localStorage.setItem(STORAGE_KEY_MODEL_MAP, JSON.stringify(modelMap));
         }
 
         function addSuggestion(type, text) {
@@ -910,6 +954,42 @@
             if (!input || input.length < 1) return [];
             const kw = input.toLowerCase();
             return list.filter(s => s.toLowerCase().includes(kw)).slice(0, 8);
+        }
+
+        // 更新型号映射
+        function updateModelMap(asin, model, supplyPrice) {
+            if (!model || !asin) return;
+            if (!modelMap[model]) modelMap[model] = { asins: [], supplyPrice: 0 };
+            // 添加 ASIN
+            if (!modelMap[model].asins.includes(asin)) {
+                modelMap[model].asins.push(asin);
+            }
+            // 更新供货价（如果提供）
+            if (supplyPrice !== undefined && supplyPrice > 0) {
+                modelMap[model].supplyPrice = supplyPrice;
+            }
+            saveAll();
+        }
+
+        // 根据型号获取统一供货价
+        function getSupplyPriceByModel(model) {
+            if (model && modelMap[model] && modelMap[model].supplyPrice > 0) {
+                return modelMap[model].supplyPrice;
+            }
+            return null;
+        }
+
+        // 根据 ASIN 获取型号（若唯一）
+        function getModelByAsin(asin) {
+            if (!asin) return null;
+            let foundModel = null;
+            for (const [model, data] of Object.entries(modelMap)) {
+                if (data.asins.includes(asin)) {
+                    if (foundModel && foundModel !== model) return null; // 多个型号对应同一 ASIN，不自动匹配
+                    foundModel = model;
+                }
+            }
+            return foundModel;
         }
 
         function addLogEntry(entry) {
@@ -938,6 +1018,14 @@
                 const kw = filterCampaign.trim().toLowerCase();
                 list = list.filter(r => r.campaign.toLowerCase().includes(kw));
             }
+            if (filterAsin.trim()) {
+                const kw = filterAsin.trim().toLowerCase();
+                list = list.filter(r => r.asin.toLowerCase().includes(kw));
+            }
+            if (filterModel.trim()) {
+                const kw = filterModel.trim().toLowerCase();
+                list = list.filter(r => r.model.toLowerCase().includes(kw));
+            }
             return list.sort((a, b) => (a.date || '').localeCompare(b.date || '') * -1);
         }
 
@@ -951,8 +1039,8 @@
             renderLogs();
             renderColManager();
             document.getElementById('filterInfo').textContent =
-                filterStart || filterEnd || filterCampaign ?
-                `筛选: ${filterStart||'开始'} ~ ${filterEnd||'结束'} · 活动包含“${filterCampaign||'全部'}” (${filtered.length}条)` :
+                filterStart || filterEnd || filterCampaign || filterAsin || filterModel ?
+                `筛选: ${filterStart||'开始'} ~ ${filterEnd||'结束'} · 活动含“${filterCampaign||'全部'}” · ASIN含“${filterAsin||'全部'}” · 型号含“${filterModel||'全部'}” (${filtered.length}条)` :
                 '显示全部';
             document.getElementById('tableCount').textContent = filtered.length + ' 条';
             document.getElementById('logCount').textContent = logs.length + ' 条';
@@ -984,7 +1072,7 @@
         function renderTable(filtered) {
             const thead = document.getElementById('tableHead');
             const tbody = document.getElementById('tableBody');
-            let headerHtml = `<tr><th>日期</th><th>活动名称</th><th>类型</th><th>策略</th><th>预算</th>
+            let headerHtml = `<tr><th>日期</th><th>活动名称</th><th>ASIN</th><th>型号</th><th>类型</th><th>策略</th><th>预算</th>
                 <th>花费</th><th>曝光</th><th>点击</th><th>CTR</th><th>转化</th>
                 <th>销售额</th><th>ACOS</th><th>CPC</th>`;
             for (const col of customCols) headerHtml += `<th>${col}</th>`;
@@ -993,7 +1081,7 @@
 
             if (filtered.length === 0) {
                 tbody.innerHTML =
-                    `<tr><td colspan="${13 + customCols.length + 1}" class="empty-state"><div class="icon">📭</div>暂无匹配数据</td></tr>`;
+                    `<tr><td colspan="${15 + customCols.length + 1}" class="empty-state"><div class="icon">📭</div>暂无匹配数据</td></tr>`;
                 return;
             }
             let bodyHtml = '';
@@ -1002,9 +1090,12 @@
                 const rowIdx = originalIdx !== -1 ? originalIdx : records.indexOf(d);
                 const typeClass = d.type === 'SP' ? 'sp' : d.type === 'SB' ? 'sb' : 'sd';
                 let row =
-                    `<tr><td>${d.date || '-'}</td><td><strong>${d.campaign || '未命名'}</strong></td><td><span class="tag ${typeClass}">${d.type || 'SP'}</span></td>
-                    <td>${d.strategy || '-'}</td><td>${Number(d.budget).toFixed(2)}</td><td>${d.spend.toFixed(2)}</td>
-                    <td>${d.impressions}</td><td>${d.clicks}</td><td>${d.ctr.toFixed(1)}%</td><td>${d.conversions}</td>
+                    `<tr><td>${d.date || '-'}</td><td><strong>${d.campaign || '未命名'}</strong></td>
+                    <td>${d.asin || '-'}</td><td>${d.model || '-'}</td>
+                    <td><span class="tag ${typeClass}">${d.type || 'SP'}</span></td>
+                    <td>${d.strategy || '-'}</td><td>${Number(d.budget).toFixed(2)}</td>
+                    <td>${d.spend.toFixed(2)}</td><td>${d.impressions}</td><td>${d.clicks}</td>
+                    <td>${d.ctr.toFixed(1)}%</td><td>${d.conversions}</td>
                     <td>${d.sales.toFixed(2)}</td><td>${d.acos.toFixed(1)}%</td><td>$${d.cpc.toFixed(2)}</td>`;
                 for (const col of customCols) {
                     const val = (d.custom && d.custom[col] !== undefined) ? d.custom[col] : '';
@@ -1078,7 +1169,6 @@
                 const afterSpend = log.afterSpend;
                 const afterConversions = log.afterConversions;
 
-                // 判断有效性
                 let status = 'unknown';
                 let statusLabel = '未知';
                 let statusClass = 'unknown';
@@ -1116,8 +1206,6 @@
                         转化：${beforeConversions || 0}单 → ${afterConversions || 0}单 <span class="${convDiff >= 0 ? 'up' : 'down'}">(${convDiff >= 0 ? '+' : ''}${convDiff})</span>
                         <span class="status-badge ${statusClass}" style="margin-left:10px;">${statusLabel}</span>
                     </div>`;
-                } else if (beforeAcos !== undefined && beforeAcos !== null && beforeAcos !== '') {
-                    // 有操作前数据但还没操作后数据（理论上不会发生，因为每次录入都有当前数据）
                 }
 
                 let intentHtml = '';
@@ -1167,9 +1255,9 @@
             document.getElementById('fImpressions').value = d ? d.impressions : '';
             document.getElementById('fClicks').value = d ? d.clicks : '';
             document.getElementById('fConversions').value = d ? d.conversions : '';
-            document.getElementById('fSupplyPrice').value = '';
+            document.getElementById('fSupplyPrice').value = d ? d.supplyPrice || '' : '';
 
-            // 操作意图字段
+            // 操作意图
             document.getElementById('fPhenomenon').value = d ? (d.phenomenon || '') : '';
             document.getElementById('fReason').value = d ? (d.reason || '') : '';
             document.getElementById('fAction').value = d ? (d.action || '') : '';
@@ -1179,6 +1267,10 @@
             document.getElementById('fBeforeSpend').value = d ? (d.beforeSpend !== undefined ? d.beforeSpend : '') : '';
             document.getElementById('fBeforeConversions').value = d ? (d.beforeConversions !== undefined ? d
                 .beforeConversions : '') : '';
+
+            // ASIN 和型号
+            document.getElementById('fAsin').value = d ? (d.asin || '') : '';
+            document.getElementById('fModel').value = d ? (d.model || '') : '';
 
             updateAutoSales();
 
@@ -1194,7 +1286,6 @@
             }
             editIndex = editIdx;
             modal.classList.add('open');
-            // 清空建议列表
             document.querySelectorAll('.suggest-list').forEach(el => el.classList.remove('show'));
         }
 
@@ -1218,8 +1309,7 @@
             const impressions = parseInt(document.getElementById('fImpressions').value) || 0;
             const clicks = parseInt(document.getElementById('fClicks').value) || 0;
             const conversions = parseInt(document.getElementById('fConversions').value) || 0;
-            const supplyPrice = parseFloat(document.getElementById('fSupplyPrice').value) || 0;
-            const sales = conversions * supplyPrice;
+            let supplyPrice = parseFloat(document.getElementById('fSupplyPrice').value) || 0;
 
             // 操作意图
             const phenomenon = document.getElementById('fPhenomenon').value.trim();
@@ -1234,12 +1324,31 @@
             const beforeConversions = document.getElementById('fBeforeConversions').value !== '' ? parseInt(document
                 .getElementById('fBeforeConversions').value) : undefined;
 
+            // ASIN 和型号
+            const asin = document.getElementById('fAsin').value.trim();
+            const model = document.getElementById('fModel').value.trim();
+
             if (!date) { alert('请选择日期'); return; }
+
+            // 自动匹配供货价：如果型号存在且供货价为空，则用统一供货价
+            if (model && modelMap[model] && modelMap[model].supplyPrice > 0 && supplyPrice === 0) {
+                supplyPrice = modelMap[model].supplyPrice;
+                document.getElementById('fSupplyPrice').value = supplyPrice;
+            }
 
             // 保存建议
             if (phenomenon.length >= 2) addSuggestion('phenomenon', phenomenon);
             if (reason.length >= 2) addSuggestion('reason', reason);
             if (action.length >= 2) addSuggestion('action', action);
+            if (asin.length >= 2) addSuggestion('asin', asin);
+            if (model.length >= 2) addSuggestion('model', model);
+
+            // 更新型号映射
+            if (asin && model) {
+                updateModelMap(asin, model, supplyPrice);
+            }
+
+            const sales = conversions * supplyPrice;
 
             const custom = {};
             document.querySelectorAll('.custom-field-input').forEach(el => {
@@ -1264,7 +1373,10 @@
                 action,
                 beforeAcos,
                 beforeSpend,
-                beforeConversions
+                beforeConversions,
+                asin,
+                model,
+                supplyPrice // 存储供货价用于历史参考
             };
 
             const isEdit = editIndex >= 0 && editIndex < records.length;
@@ -1277,10 +1389,8 @@
                 records.push(record);
             }
 
-            // 计算当前ACOS
             const currentAcos = sales > 0 ? (spend / sales) * 100 : 0;
 
-            // 记录操作日志
             const logEntry = {
                 time: new Date().toISOString().replace('T', ' ').slice(0, 16),
                 operation: isEdit ? '编辑' : '添加',
@@ -1329,7 +1439,7 @@
         };
 
         // ================================================================
-        //  建议检索
+        //  建议检索（扩展 ASIN 和型号）
         // ================================================================
         function setupSuggest(inputId, suggestId, type) {
             const input = document.getElementById(inputId);
@@ -1371,8 +1481,58 @@
                     input.value = item.dataset.text;
                     suggestEl.classList.remove('show');
                     input.focus();
+                    // 触发自动匹配
+                    if (type === 'model') autoFillByModel();
+                    if (type === 'asin') autoFillByAsin();
                 }
             });
+        }
+
+        // 自动填充：输入型号后自动填充供货价，并更新 ASIN 建议
+        function autoFillByModel() {
+            const modelInput = document.getElementById('fModel');
+            const model = modelInput.value.trim();
+            const supplyInput = document.getElementById('fSupplyPrice');
+            if (model && modelMap[model] && modelMap[model].supplyPrice > 0) {
+                supplyInput.value = modelMap[model].supplyPrice;
+                updateAutoSales();
+            }
+            // 更新 ASIN 建议（优先显示该型号下的 ASIN）
+            const asinInput = document.getElementById('fAsin');
+            const asinSuggest = document.getElementById('suggestAsin');
+            if (model && modelMap[model] && modelMap[model].asins.length > 0) {
+                const asins = modelMap[model].asins;
+                const val = asinInput.value;
+                const filtered = asins.filter(a => a.toLowerCase().includes(val.toLowerCase()));
+                if (filtered.length > 0) {
+                    asinSuggest.innerHTML = filtered.map(s =>
+                        `<div class="suggest-item" data-text="${s}">${s}</div>`
+                    ).join('');
+                    asinSuggest.classList.add('show');
+                } else {
+                    asinSuggest.classList.remove('show');
+                }
+            }
+        }
+
+        function autoFillByAsin() {
+            const asinInput = document.getElementById('fAsin');
+            const asin = asinInput.value.trim();
+            const modelInput = document.getElementById('fModel');
+            if (asin) {
+                const matchedModel = getModelByAsin(asin);
+                if (matchedModel) {
+                    modelInput.value = matchedModel;
+                    // 自动填充供货价
+                    const supplyInput = document.getElementById('fSupplyPrice');
+                    if (modelMap[matchedModel] && modelMap[matchedModel].supplyPrice > 0) {
+                        supplyInput.value = modelMap[matchedModel].supplyPrice;
+                        updateAutoSales();
+                    }
+                    // 更新型号建议列表关闭
+                    document.getElementById('suggestModel').classList.remove('show');
+                }
+            }
         }
 
         // ================================================================
@@ -1387,7 +1547,6 @@
             const endStr = now.toISOString().slice(0, 10);
             document.getElementById('reviewPeriod').textContent = `📅 ${startStr} ~ ${endStr}`;
 
-            // 筛选最近7天的日志
             const recentLogs = logs.filter(log => {
                 if (!log.time) return false;
                 const logDate = log.time.slice(0, 10);
@@ -1399,13 +1558,10 @@
                 ineffective = 0,
                 pending = 0,
                 unknown = 0;
-
-            // 统计现象和操作分布
             const phenMap = {};
             const actionMap = {};
 
             for (const log of recentLogs) {
-                // 判断有效性
                 const bA = log.beforeAcos;
                 const aA = log.afterAcos;
                 const bC = parseInt(log.beforeConversions) || 0;
@@ -1419,12 +1575,10 @@
                     unknown++;
                 }
 
-                // 统计现象
                 if (log.phenomenon) {
                     const key = log.phenomenon;
                     phenMap[key] = (phenMap[key] || 0) + 1;
                 }
-                // 统计操作
                 if (log.action) {
                     const key = log.action;
                     actionMap[key] = (actionMap[key] || 0) + 1;
@@ -1436,27 +1590,17 @@
             document.getElementById('rIneffective').textContent = ineffective;
             document.getElementById('rPending').textContent = pending;
 
-            // 现象分布
             const phenContainer = document.getElementById('rPhenomenon');
             const phenEntries = Object.entries(phenMap).sort((a, b) => b[1] - a[1]);
-            if (phenEntries.length === 0) {
-                phenContainer.innerHTML = '<span style="color:#8a9aae;font-size:12px;">暂无数据</span>';
-            } else {
-                phenContainer.innerHTML = phenEntries.map(([k, v]) =>
-                    `<span class="item"><span class="count">${v}</span> ${k}</span>`
-                ).join('');
-            }
+            phenContainer.innerHTML = phenEntries.length === 0 ?
+                '<span style="color:#8a9aae;font-size:12px;">暂无数据</span>' :
+                phenEntries.map(([k, v]) => `<span class="item"><span class="count">${v}</span> ${k}</span>`).join('');
 
-            // 操作分布
             const actionContainer = document.getElementById('rAction');
             const actionEntries = Object.entries(actionMap).sort((a, b) => b[1] - a[1]);
-            if (actionEntries.length === 0) {
-                actionContainer.innerHTML = '<span style="color:#8a9aae;font-size:12px;">暂无数据</span>';
-            } else {
-                actionContainer.innerHTML = actionEntries.map(([k, v]) =>
-                    `<span class="item"><span class="count">${v}</span> ${k}</span>`
-                ).join('');
-            }
+            actionContainer.innerHTML = actionEntries.length === 0 ?
+                '<span style="color:#8a9aae;font-size:12px;">暂无数据</span>' :
+                actionEntries.map(([k, v]) => `<span class="item"><span class="count">${v}</span> ${k}</span>`).join('');
 
             modal.classList.add('open');
         }
@@ -1562,7 +1706,7 @@
         //  Excel 导入 / 导出 / 下载模版
         // ================================================================
         function getStandardHeaders() {
-            return ['日期', '活动名称', '类型', '竞价策略', '预算', '花费', '曝光', '点击', '转化', '供货价', ...customCols];
+            return ['日期', '活动名称', '投放ASIN', '投放型号', '类型', '竞价策略', '预算', '花费', '曝光', '点击', '转化', '供货价', ...customCols];
         }
 
         function recordsToRows(recordsArray) {
@@ -1570,10 +1714,12 @@
             const rows = recordsArray.map(d => {
                 const conv = Number(d.conversions) || 0;
                 const sales = Number(d.sales) || 0;
-                const supplyPrice = conv > 0 ? sales / conv : 0;
+                const supplyPrice = d.supplyPrice !== undefined ? d.supplyPrice : (conv > 0 ? sales / conv : 0);
                 const base = [
                     d.date || '',
                     d.campaign || '',
+                    d.asin || '',
+                    d.model || '',
                     d.type || 'SP',
                     d.strategy || '仅降低',
                     Number(d.budget).toFixed(2),
@@ -1581,7 +1727,7 @@
                     Number(d.impressions) || 0,
                     Number(d.clicks) || 0,
                     Number(d.conversions) || 0,
-                    supplyPrice.toFixed(2)
+                    Number(supplyPrice).toFixed(2)
                 ];
                 const customVals = customCols.map(col => (d.custom && d.custom[col] !== undefined) ? d.custom[col] : '');
                 return [...base, ...customVals];
@@ -1613,6 +1759,8 @@
                     const fieldMap = {
                         '日期': 'date',
                         '活动名称': 'campaign',
+                        '投放ASIN': 'asin',
+                        '投放型号': 'model',
                         '类型': 'type',
                         '竞价策略': 'strategy',
                         '预算': 'budget',
@@ -1630,6 +1778,8 @@
                     for (const row of json) {
                         const date = row['日期'] || '';
                         const campaign = row['活动名称'] || '未命名';
+                        const asin = row['投放ASIN'] || '';
+                        const model = row['投放型号'] || '';
                         const type = row['类型'] || 'SP';
                         const strategy = row['竞价策略'] || '仅降低';
                         const budget = parseFloat(row['预算']) || 0;
@@ -1646,9 +1796,16 @@
 
                         if (!date) { skippedCount++; continue; }
 
+                        // 更新映射
+                        if (asin && model) {
+                            updateModelMap(asin, model, supplyPrice);
+                        }
+
                         const record = {
                             date,
                             campaign,
+                            asin,
+                            model,
                             type,
                             strategy,
                             budget,
@@ -1657,6 +1814,7 @@
                             clicks,
                             conversions,
                             sales,
+                            supplyPrice,
                             custom: {},
                             phenomenon: '',
                             reason: '',
@@ -1677,7 +1835,6 @@
                     }
 
                     saveAll();
-                    // 导入也记录日志
                     const logEntry = {
                         time: new Date().toISOString().replace('T', ' ').slice(0, 16),
                         operation: '导入',
@@ -1757,6 +1914,7 @@
             records = [];
             logs = [];
             customCols = [];
+            modelMap = {};
             saveAll();
             renderAll();
         }
@@ -1768,6 +1926,8 @@
             filterStart = document.getElementById('startDate').value;
             filterEnd = document.getElementById('endDate').value;
             filterCampaign = document.getElementById('campaignSearch').value;
+            filterAsin = document.getElementById('asinSearch').value;
+            filterModel = document.getElementById('modelSearch').value;
             renderAll();
         }
 
@@ -1775,9 +1935,13 @@
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
             document.getElementById('campaignSearch').value = '';
+            document.getElementById('asinSearch').value = '';
+            document.getElementById('modelSearch').value = '';
             filterStart = '';
             filterEnd = '';
             filterCampaign = '';
+            filterAsin = '';
+            filterModel = '';
             renderAll();
         }
 
@@ -1792,6 +1956,12 @@
             setupSuggest('fPhenomenon', 'suggestPhenomenon', 'phenomenon');
             setupSuggest('fReason', 'suggestReason', 'reason');
             setupSuggest('fAction', 'suggestAction', 'action');
+            setupSuggest('fAsin', 'suggestAsin', 'asin');
+            setupSuggest('fModel', 'suggestModel', 'model');
+
+            // 型号和 ASIN 自动填充
+            document.getElementById('fModel').addEventListener('blur', autoFillByModel);
+            document.getElementById('fAsin').addEventListener('blur', autoFillByAsin);
 
             document.getElementById('openAddBtn').addEventListener('click', () => openModal(-1));
             document.getElementById('closeModalBtn').addEventListener('click', closeModal);
@@ -1836,6 +2006,12 @@
             });
 
             document.getElementById('campaignSearch').addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') applyFilter();
+            });
+            document.getElementById('asinSearch').addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') applyFilter();
+            });
+            document.getElementById('modelSearch').addEventListener('keyup', function(e) {
                 if (e.key === 'Enter') applyFilter();
             });
 
