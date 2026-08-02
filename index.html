@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>广告数据工作台 · 全功能版</title>
+    <title>广告数据工作台 · 操作复盘版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
     </script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
@@ -99,6 +99,13 @@
             font-size: 12px;
             border-radius: 8px;
         }
+        .btn-purple {
+            background: #6b4c9a;
+            color: white;
+        }
+        .btn-purple:hover {
+            background: #7d5caf;
+        }
         .filter-bar {
             background: white;
             padding: 16px 24px;
@@ -131,8 +138,6 @@
         .filter-bar input[type="text"] {
             min-width: 140px;
         }
-
-        /* 日期快捷浮层 */
         .date-picker-wrapper {
             position: relative;
             display: inline-flex;
@@ -176,7 +181,6 @@
             font-size: 13px;
             padding: 0 2px;
         }
-
         .date-quick-dropdown {
             position: absolute;
             top: calc(100% + 6px);
@@ -209,7 +213,6 @@
             background: #dbeafe;
             color: #1a3a5c;
         }
-
         .chart-card {
             background: white;
             border-radius: 20px;
@@ -282,6 +285,7 @@
         .card-header .actions {
             display: flex;
             gap: 6px;
+            flex-wrap: wrap;
         }
         .table-wrap {
             overflow-x: auto;
@@ -334,6 +338,18 @@
             background: #fef3c7;
             color: #9d6b00;
         }
+        .tag.success {
+            background: #d1fae5;
+            color: #0b6e4f;
+        }
+        .tag.danger {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .tag.warning {
+            background: #fef3c7;
+            color: #9d6b00;
+        }
         .text-muted {
             color: #8a9aae;
             font-size: 12px;
@@ -348,16 +364,16 @@
             margin-bottom: 6px;
         }
         .log-list {
-            max-height: 400px;
+            max-height: 420px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
         .log-item {
-            padding: 10px 12px;
+            padding: 12px 14px;
             background: #fafcff;
-            border-radius: 10px;
+            border-radius: 12px;
             border-left: 4px solid #2c6fbb;
             font-size: 13px;
         }
@@ -371,7 +387,59 @@
         }
         .log-item .detail {
             color: #4a5a6e;
-            margin-top: 2px;
+            margin-top: 3px;
+        }
+        .log-item .intent-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 12px;
+            margin: 4px 0 2px;
+            font-size: 13px;
+        }
+        .log-item .intent-tags span {
+            background: #eef3fc;
+            padding: 1px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .log-item .compare-result {
+            margin-top: 4px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            background: #f0f4f9;
+        }
+        .log-item .compare-result .up {
+            color: #0b6e4f;
+        }
+        .log-item .compare-result .down {
+            color: #b91c1c;
+        }
+        .log-item .compare-result .neutral {
+            color: #9d6b00;
+        }
+        .log-item .status-badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .log-item .status-badge.effective {
+            background: #d1fae5;
+            color: #0b6e4f;
+        }
+        .log-item .status-badge.ineffective {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .log-item .status-badge.pending {
+            background: #fef3c7;
+            color: #9d6b00;
+        }
+        .log-item .status-badge.unknown {
+            background: #eef2f7;
+            color: #6b7a8f;
         }
         .modal-overlay {
             position: fixed;
@@ -420,19 +488,26 @@
             margin-bottom: 4px;
         }
         .modal .form-group input,
-        .modal .form-group select {
+        .modal .form-group select,
+        .modal .form-group textarea {
             width: 100%;
             padding: 8px 12px;
             border-radius: 10px;
             border: 1px solid #dce3ec;
             font-size: 13px;
             background: #fafcff;
+            font-family: inherit;
         }
         .modal .form-group input:focus,
-        .modal .form-group select:focus {
+        .modal .form-group select:focus,
+        .modal .form-group textarea:focus {
             border-color: #2c6fbb;
             outline: none;
             box-shadow: 0 0 0 3px rgba(44, 111, 187, 0.08);
+        }
+        .modal .form-group textarea {
+            resize: vertical;
+            min-height: 40px;
         }
         .modal .form-actions {
             display: flex;
@@ -446,6 +521,17 @@
             margin: 12px 0 8px;
             text-align: right;
         }
+        .modal .section-divider {
+            border-top: 2px dashed #eef2f7;
+            margin: 16px 0 14px;
+            padding-top: 4px;
+        }
+        .modal .section-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1a3a5c;
+            margin-bottom: 10px;
+        }
         .auto-calc-hint {
             font-size: 13px;
             color: #0b6e4f;
@@ -455,8 +541,97 @@
             display: inline-block;
             margin-top: 4px;
         }
+        .suggest-box {
+            position: relative;
+        }
+        .suggest-list {
+            position: absolute;
+            top: calc(100% + 2px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #dce3ec;
+            border-radius: 10px;
+            max-height: 120px;
+            overflow-y: auto;
+            z-index: 50;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            display: none;
+        }
+        .suggest-list.show {
+            display: block;
+        }
+        .suggest-list .suggest-item {
+            padding: 6px 14px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #1a2a3a;
+        }
+        .suggest-list .suggest-item:hover {
+            background: #eef3fc;
+        }
         #fileInput {
             display: none;
+        }
+
+        /* 周复盘弹窗 */
+        .review-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 12px 0;
+        }
+        .review-card {
+            background: #fafcff;
+            border-radius: 14px;
+            padding: 14px 16px;
+            border: 1px solid #eef2f7;
+        }
+        .review-card .num {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0b1a2b;
+        }
+        .review-card .lbl {
+            font-size: 13px;
+            color: #6b7a8f;
+        }
+        .review-card .sub {
+            font-size: 12px;
+            color: #8a9aae;
+            margin-top: 2px;
+        }
+        .review-tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 8px;
+            margin-top: 4px;
+        }
+        .review-tag-list .item {
+            font-size: 12px;
+            background: #eef3fc;
+            padding: 2px 12px;
+            border-radius: 20px;
+        }
+        .review-tag-list .item .count {
+            font-weight: 600;
+            color: #1a3a5c;
+        }
+        .review-tag-list .item .pct {
+            color: #6b7a8f;
+            font-size: 11px;
+        }
+
+        @media (max-width: 700px) {
+            .modal .form-row {
+                grid-template-columns: 1fr;
+            }
+            .filter-bar .group {
+                flex-wrap: wrap;
+            }
+            .review-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -467,6 +642,7 @@
             <h1>📊 广告<span>工作台</span></h1>
             <div class="actions">
                 <button class="btn btn-primary" id="openAddBtn">+ 添加记录</button>
+                <button class="btn btn-purple" id="reviewBtn">📊 周复盘</button>
                 <button class="btn btn-success" id="downloadTemplateBtn">📄 下载模版</button>
                 <button class="btn btn-success" id="importBtn">📥 导入</button>
                 <button class="btn btn-outline" id="exportBtn">⬇️ 导出</button>
@@ -475,9 +651,7 @@
             <input type="file" id="fileInput" accept=".xlsx,.xls" />
         </header>
 
-        <!-- ===== 筛选栏 ===== -->
         <div class="filter-bar">
-            <!-- 日期范围 + 快捷浮层 -->
             <div class="group" style="flex-wrap: wrap; gap: 8px;">
                 <label>📅 日期</label>
                 <div class="date-picker-wrapper" id="datePickerWrapper">
@@ -487,7 +661,6 @@
                         <input type="date" id="endDate" />
                         <span class="date-icon">⌄</span>
                     </div>
-                    <!-- 快捷浮层 -->
                     <div class="date-quick-dropdown" id="dateQuickDropdown">
                         <button class="btn date-quick" data-range="today">今天</button>
                         <button class="btn date-quick" data-range="yesterday">昨天</button>
@@ -501,12 +674,10 @@
                     </div>
                 </div>
             </div>
-            <!-- 活动搜索 -->
             <div class="group">
                 <label>🔍 活动</label>
                 <input type="text" id="campaignSearch" placeholder="搜索活动名称..." />
             </div>
-            <!-- 应用/重置 -->
             <div class="group">
                 <button class="btn btn-primary btn-sm" id="applyFilterBtn">应用</button>
                 <button class="btn btn-outline btn-sm" id="resetFilterBtn">重置</button>
@@ -569,6 +740,38 @@
     <div class="modal-overlay" id="dataModal">
         <div class="modal">
             <h3 id="modalTitle">📊 添加广告数据</h3>
+
+            <!-- 操作意图（新增） -->
+            <div class="section-title">🎯 操作意图</div>
+            <div class="form-row">
+                <div class="form-group suggest-box">
+                    <label>现象</label>
+                    <input type="text" id="fPhenomenon" placeholder="例如：acos高 / 不出单" autocomplete="off" />
+                    <div class="suggest-list" id="suggestPhenomenon"></div>
+                </div>
+                <div class="form-group suggest-box">
+                    <label>原因</label>
+                    <input type="text" id="fReason" placeholder="例如：竞价太高 / 词不精准" autocomplete="off" />
+                    <div class="suggest-list" id="suggestReason"></div>
+                </div>
+            </div>
+            <div class="form-group suggest-box">
+                <label>操作</label>
+                <input type="text" id="fAction" placeholder="例如：调低竞价 / 否词" autocomplete="off" />
+                <div class="suggest-list" id="suggestAction"></div>
+            </div>
+
+            <!-- 操作前数据对比（新增） -->
+            <div class="section-divider"></div>
+            <div class="section-title">📊 操作前数据（用于对比效果）</div>
+            <div class="form-row">
+                <div class="form-group"><label>操作前 ACOS (%)</label><input type="number" id="fBeforeAcos" step="0.1" min="0" placeholder="例如 35.0" /></div>
+                <div class="form-group"><label>操作前 花费 ($)</label><input type="number" id="fBeforeSpend" step="0.01" min="0" placeholder="例如 12.50" /></div>
+                <div class="form-group"><label>操作前 转化 (单)</label><input type="number" id="fBeforeConversions" step="1" min="0" placeholder="例如 3" /></div>
+            </div>
+
+            <div class="section-divider"></div>
+            <div class="section-title">📋 数据录入</div>
             <div class="form-row">
                 <div class="form-group"><label>日期</label><input type="date" id="fDate" /></div>
                 <div class="form-group"><label>活动名称</label><input type="text" id="fCampaign" placeholder="例如：SP-主推款" /></div>
@@ -591,14 +794,12 @@
             </div>
             <div class="form-row">
                 <div class="form-group"><label>转化 (订单)</label><input type="number" id="fConversions" step="1" min="0" placeholder="0" /></div>
-                <div class="form-group">
-                    <label>供货价 ($)</label>
-                    <input type="number" id="fSupplyPrice" step="0.01" min="0" placeholder="0.00" />
-                </div>
+                <div class="form-group"><label>供货价 ($)</label><input type="number" id="fSupplyPrice" step="0.01" min="0" placeholder="0.00" /></div>
             </div>
             <div style="text-align:right; margin-top:-8px; margin-bottom:8px;">
                 <span class="auto-calc-hint" id="autoSalesDisplay">📊 预计销售额: $0.00</span>
             </div>
+
             <div id="customFieldsContainer"></div>
             <div class="manage-col-section">
                 <button class="btn btn-outline btn-sm" id="manageColFromModalBtn">📋 管理自定义列</button>
@@ -626,6 +827,40 @@
         </div>
     </div>
 
+    <!-- ===== 周复盘 模态框 ===== -->
+    <div class="modal-overlay" id="reviewModal">
+        <div class="modal">
+            <h3>📊 周复盘</h3>
+            <div style="font-size:13px;color:#6b7a8f;margin-bottom:12px;" id="reviewPeriod">最近7天</div>
+            <div class="review-grid" id="reviewGrid">
+                <div class="review-card"><div class="num" id="rTotal">0</div><div class="lbl">操作总数</div></div>
+                <div class="review-card"><div class="num" id="rEffective">0</div><div class="lbl">有效</div></div>
+                <div class="review-card"><div class="num" id="rIneffective">0</div><div class="lbl">无效</div></div>
+                <div class="review-card"><div class="num" id="rPending">0</div><div class="lbl">待观察</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;">
+                <div class="review-card">
+                    <div class="lbl">📌 现象分布</div>
+                    <div class="review-tag-list" id="rPhenomenon"></div>
+                </div>
+                <div class="review-card">
+                    <div class="lbl">🔧 操作分布</div>
+                    <div class="review-tag-list" id="rAction"></div>
+                </div>
+            </div>
+            <div style="margin-top:12px;font-size:13px;color:#6b7a8f;background:#f8faff;padding:10px 14px;border-radius:10px;">
+                <div style="font-weight:600;margin-bottom:4px;">💡 有效性判断规则</div>
+                <div>• <span style="color:#0b6e4f;">有效</span>：ACOS下降 且 转化不降</div>
+                <div>• <span style="color:#9d6b00;">待观察</span>：ACOS下降 但 转化下降</div>
+                <div>• <span style="color:#b91c1c;">无效</span>：ACOS上升</div>
+                <div>• 未填写操作前数据则显示“未知”</div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-outline" id="closeReviewBtn">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ================================================================
         //  数据层
@@ -633,6 +868,7 @@
         const STORAGE_KEY_DATA = 'adDashboardData';
         const STORAGE_KEY_LOGS = 'adDashboardLogs';
         const STORAGE_KEY_COLS = 'adDashboardCustomCols';
+        const STORAGE_KEY_SUGGEST = 'adDashboardSuggests';
 
         let records = [];
         let logs = [];
@@ -641,11 +877,14 @@
         let filterStart = '';
         let filterEnd = '';
         let filterCampaign = '';
+        let suggestData = { phenomenon: [], reason: [], action: [] };
 
         function loadAll() {
             try { records = JSON.parse(localStorage.getItem(STORAGE_KEY_DATA)) || []; } catch { records = []; }
             try { logs = JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS)) || []; } catch { logs = []; }
             try { customCols = JSON.parse(localStorage.getItem(STORAGE_KEY_COLS)) || []; } catch { customCols = []; }
+            try { suggestData = JSON.parse(localStorage.getItem(STORAGE_KEY_SUGGEST)) || { phenomenon: [], reason: [],
+                    action: [] }; } catch { suggestData = { phenomenon: [], reason: [], action: [] }; }
             records = records.map(r => { if (!r.custom) r.custom = {}; return r; });
         }
 
@@ -653,11 +892,28 @@
             localStorage.setItem(STORAGE_KEY_DATA, JSON.stringify(records));
             localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
             localStorage.setItem(STORAGE_KEY_COLS, JSON.stringify(customCols));
+            localStorage.setItem(STORAGE_KEY_SUGGEST, JSON.stringify(suggestData));
         }
 
-        function addLog(action, target, detail) {
-            logs.push({ time: new Date().toISOString().replace('T', ' ').slice(0, 16), action, target: target || '未命名',
-                detail: detail || '' });
+        function addSuggestion(type, text) {
+            if (!text || text.length < 2) return;
+            const list = suggestData[type] || [];
+            if (!list.includes(text)) {
+                list.push(text);
+                suggestData[type] = list;
+                saveAll();
+            }
+        }
+
+        function getSuggestions(type, input) {
+            const list = suggestData[type] || [];
+            if (!input || input.length < 1) return [];
+            const kw = input.toLowerCase();
+            return list.filter(s => s.toLowerCase().includes(kw)).slice(0, 8);
+        }
+
+        function addLogEntry(entry) {
+            logs.push(entry);
             saveAll();
         }
 
@@ -798,15 +1054,87 @@
             chartInstance.resize();
         }
 
+        // ================================================================
+        //  渲染操作日志（增强版）
+        // ================================================================
         function renderLogs() {
             const container = document.getElementById('logList');
-            if (logs.length === 0) { container.innerHTML =
-                    `<div class="empty-state"><div class="icon">📭</div>暂无操作</div>`; return; }
+            if (logs.length === 0) {
+                container.innerHTML = `<div class="empty-state"><div class="icon">📭</div>暂无操作</div>`;
+                return;
+            }
             const sorted = [...logs].reverse();
             let html = '';
             for (const log of sorted) {
-                html += `<div class="log-item"><div><span class="time">${log.time}</span><span class="op">${log.action}</span> <strong>${log.target}</strong></div>
-                    <div class="detail">${log.detail}</div></div>`;
+                const time = log.time || '';
+                const campaign = log.campaign || '未命名';
+                const phenomenon = log.phenomenon || '';
+                const reason = log.reason || '';
+                const action = log.action || '';
+                const beforeAcos = log.beforeAcos;
+                const beforeSpend = log.beforeSpend;
+                const beforeConversions = log.beforeConversions;
+                const afterAcos = log.afterAcos;
+                const afterSpend = log.afterSpend;
+                const afterConversions = log.afterConversions;
+
+                // 判断有效性
+                let status = 'unknown';
+                let statusLabel = '未知';
+                let statusClass = 'unknown';
+                let compareHtml = '';
+
+                if (beforeAcos !== undefined && beforeAcos !== null && beforeAcos !== '' &&
+                    afterAcos !== undefined && afterAcos !== null && afterAcos !== '') {
+                    const bA = parseFloat(beforeAcos);
+                    const aA = parseFloat(afterAcos);
+                    const bC = parseInt(beforeConversions) || 0;
+                    const aC = parseInt(afterConversions) || 0;
+
+                    if (aA < bA && aC >= bC) {
+                        status = 'effective';
+                        statusLabel = '✅ 有效';
+                        statusClass = 'effective';
+                    } else if (aA < bA && aC < bC) {
+                        status = 'pending';
+                        statusLabel = '⚠️ 待观察';
+                        statusClass = 'pending';
+                    } else if (aA >= bA) {
+                        status = 'ineffective';
+                        statusLabel = '❌ 无效';
+                        statusClass = 'ineffective';
+                    }
+
+                    const acosDiff = (aA - bA);
+                    const spendDiff = (afterSpend || 0) - (beforeSpend || 0);
+                    const convDiff = (afterConversions || 0) - (beforeConversions || 0);
+
+                    compareHtml = `<div class="compare-result">
+                        <strong>📊 对比操作前</strong><br/>
+                        ACOS：${bA.toFixed(1)}% → ${aA.toFixed(1)}% <span class="${acosDiff < 0 ? 'up' : 'down'}">(${acosDiff >= 0 ? '+' : ''}${acosDiff.toFixed(1)}%)</span><br/>
+                        花费：$${beforeSpend || 0} → $${afterSpend || 0} <span class="${spendDiff < 0 ? 'up' : 'down'}">(${spendDiff >= 0 ? '+' : ''}${spendDiff.toFixed(2)})</span><br/>
+                        转化：${beforeConversions || 0}单 → ${afterConversions || 0}单 <span class="${convDiff >= 0 ? 'up' : 'down'}">(${convDiff >= 0 ? '+' : ''}${convDiff})</span>
+                        <span class="status-badge ${statusClass}" style="margin-left:10px;">${statusLabel}</span>
+                    </div>`;
+                } else if (beforeAcos !== undefined && beforeAcos !== null && beforeAcos !== '') {
+                    // 有操作前数据但还没操作后数据（理论上不会发生，因为每次录入都有当前数据）
+                }
+
+                let intentHtml = '';
+                if (phenomenon || reason || action) {
+                    intentHtml = `<div class="intent-tags">
+                        ${phenomenon ? `<span>📌 ${phenomenon}</span>` : ''}
+                        ${reason ? `<span>💡 ${reason}</span>` : ''}
+                        ${action ? `<span>🔧 ${action}</span>` : ''}
+                    </div>`;
+                }
+
+                html += `<div class="log-item">
+                    <div><span class="time">${time}</span><span class="op">${log.operation || '操作'}</span> <strong>${campaign}</strong></div>
+                    ${intentHtml}
+                    ${compareHtml}
+                    <div class="detail">${log.detail || ''}</div>
+                </div>`;
             }
             container.innerHTML = html;
         }
@@ -822,10 +1150,14 @@
             container.innerHTML = html;
         }
 
+        // ================================================================
+        //  模态框操作
+        // ================================================================
         function openModal(editIdx) {
             const modal = document.getElementById('dataModal');
             document.getElementById('modalTitle').textContent = editIdx >= 0 ? '✎ 编辑记录' : '📊 添加广告数据';
             const d = editIdx >= 0 && editIdx < records.length ? records[editIdx] : null;
+
             document.getElementById('fDate').value = d ? d.date : new Date().toISOString().slice(0, 10);
             document.getElementById('fCampaign').value = d ? d.campaign : '';
             document.getElementById('fType').value = d ? d.type : 'SP';
@@ -836,6 +1168,18 @@
             document.getElementById('fClicks').value = d ? d.clicks : '';
             document.getElementById('fConversions').value = d ? d.conversions : '';
             document.getElementById('fSupplyPrice').value = '';
+
+            // 操作意图字段
+            document.getElementById('fPhenomenon').value = d ? (d.phenomenon || '') : '';
+            document.getElementById('fReason').value = d ? (d.reason || '') : '';
+            document.getElementById('fAction').value = d ? (d.action || '') : '';
+
+            // 操作前数据
+            document.getElementById('fBeforeAcos').value = d ? (d.beforeAcos !== undefined ? d.beforeAcos : '') : '';
+            document.getElementById('fBeforeSpend').value = d ? (d.beforeSpend !== undefined ? d.beforeSpend : '') : '';
+            document.getElementById('fBeforeConversions').value = d ? (d.beforeConversions !== undefined ? d
+                .beforeConversions : '') : '';
+
             updateAutoSales();
 
             const container = document.getElementById('customFieldsContainer');
@@ -850,6 +1194,8 @@
             }
             editIndex = editIdx;
             modal.classList.add('open');
+            // 清空建议列表
+            document.querySelectorAll('.suggest-list').forEach(el => el.classList.remove('show'));
         }
 
         function closeModal() { document.getElementById('dataModal').classList.remove('open');
@@ -875,7 +1221,25 @@
             const supplyPrice = parseFloat(document.getElementById('fSupplyPrice').value) || 0;
             const sales = conversions * supplyPrice;
 
+            // 操作意图
+            const phenomenon = document.getElementById('fPhenomenon').value.trim();
+            const reason = document.getElementById('fReason').value.trim();
+            const action = document.getElementById('fAction').value.trim();
+
+            // 操作前数据
+            const beforeAcos = document.getElementById('fBeforeAcos').value !== '' ? parseFloat(document.getElementById(
+                'fBeforeAcos').value) : undefined;
+            const beforeSpend = document.getElementById('fBeforeSpend').value !== '' ? parseFloat(document.getElementById(
+                'fBeforeSpend').value) : undefined;
+            const beforeConversions = document.getElementById('fBeforeConversions').value !== '' ? parseInt(document
+                .getElementById('fBeforeConversions').value) : undefined;
+
             if (!date) { alert('请选择日期'); return; }
+
+            // 保存建议
+            if (phenomenon.length >= 2) addSuggestion('phenomenon', phenomenon);
+            if (reason.length >= 2) addSuggestion('reason', reason);
+            if (action.length >= 2) addSuggestion('action', action);
 
             const custom = {};
             document.querySelectorAll('.custom-field-input').forEach(el => {
@@ -883,18 +1247,58 @@
                 custom[col] = el.value;
             });
 
-            const record = { date, campaign, type, strategy, budget, spend, impressions, clicks, conversions, sales,
-                custom };
+            const record = {
+                date,
+                campaign,
+                type,
+                strategy,
+                budget,
+                spend,
+                impressions,
+                clicks,
+                conversions,
+                sales,
+                custom,
+                phenomenon,
+                reason,
+                action,
+                beforeAcos,
+                beforeSpend,
+                beforeConversions
+            };
 
-            if (editIndex >= 0 && editIndex < records.length) {
+            const isEdit = editIndex >= 0 && editIndex < records.length;
+
+            if (isEdit) {
                 record.id = records[editIndex].id;
                 records[editIndex] = record;
-                addLog('编辑', campaign, `花费 $${spend.toFixed(2)}，销售额 $${sales.toFixed(2)}`);
             } else {
                 record.id = Date.now() + '_' + Math.random().toString(36).slice(2, 6);
                 records.push(record);
-                addLog('添加', campaign, `花费 $${spend.toFixed(2)}，销售额 $${sales.toFixed(2)}`);
             }
+
+            // 计算当前ACOS
+            const currentAcos = sales > 0 ? (spend / sales) * 100 : 0;
+
+            // 记录操作日志
+            const logEntry = {
+                time: new Date().toISOString().replace('T', ' ').slice(0, 16),
+                operation: isEdit ? '编辑' : '添加',
+                campaign: campaign,
+                phenomenon: phenomenon,
+                reason: reason,
+                action: action,
+                beforeAcos: beforeAcos,
+                beforeSpend: beforeSpend,
+                beforeConversions: beforeConversions,
+                afterAcos: currentAcos,
+                afterSpend: spend,
+                afterConversions: conversions,
+                detail: isEdit ? `编辑记录，花费 $${spend.toFixed(2)}，销售额 $${sales.toFixed(2)}` :
+                    `添加记录，花费 $${spend.toFixed(2)}，销售额 $${sales.toFixed(2)}`
+            };
+            addLogEntry(logEntry);
+
             saveAll();
             closeModal();
             renderAll();
@@ -904,7 +1308,16 @@
             if (!confirm('确定删除吗？')) return;
             const record = records[idx];
             if (record) {
-                addLog('删除', record.campaign, `花费 $${record.spend.toFixed(2)}`);
+                const logEntry = {
+                    time: new Date().toISOString().replace('T', ' ').slice(0, 16),
+                    operation: '删除',
+                    campaign: record.campaign || '未命名',
+                    phenomenon: record.phenomenon || '',
+                    reason: record.reason || '',
+                    action: record.action || '',
+                    detail: `删除记录，花费 $${(record.spend || 0).toFixed(2)}，销售额 $${(record.sales || 0).toFixed(2)}`
+                };
+                addLogEntry(logEntry);
             }
             records.splice(idx, 1);
             saveAll();
@@ -914,6 +1327,143 @@
         window.editRecord = function(idx) {
             openModal(idx);
         };
+
+        // ================================================================
+        //  建议检索
+        // ================================================================
+        function setupSuggest(inputId, suggestId, type) {
+            const input = document.getElementById(inputId);
+            const suggestEl = document.getElementById(suggestId);
+
+            input.addEventListener('input', function() {
+                const val = this.value;
+                const suggestions = getSuggestions(type, val);
+                if (suggestions.length > 0 && val.length >= 1) {
+                    suggestEl.innerHTML = suggestions.map(s =>
+                        `<div class="suggest-item" data-text="${s}">${s}</div>`
+                    ).join('');
+                    suggestEl.classList.add('show');
+                } else {
+                    suggestEl.classList.remove('show');
+                }
+            });
+
+            input.addEventListener('blur', function() {
+                setTimeout(() => { suggestEl.classList.remove('show'); }, 200);
+            });
+
+            input.addEventListener('focus', function() {
+                const val = this.value;
+                if (val.length >= 1) {
+                    const suggestions = getSuggestions(type, val);
+                    if (suggestions.length > 0) {
+                        suggestEl.innerHTML = suggestions.map(s =>
+                            `<div class="suggest-item" data-text="${s}">${s}</div>`
+                        ).join('');
+                        suggestEl.classList.add('show');
+                    }
+                }
+            });
+
+            suggestEl.addEventListener('click', function(e) {
+                const item = e.target.closest('.suggest-item');
+                if (item) {
+                    input.value = item.dataset.text;
+                    suggestEl.classList.remove('show');
+                    input.focus();
+                }
+            });
+        }
+
+        // ================================================================
+        //  周复盘
+        // ================================================================
+        function openReview() {
+            const modal = document.getElementById('reviewModal');
+            const now = new Date();
+            const sevenDaysAgo = new Date(now);
+            sevenDaysAgo.setDate(now.getDate() - 6);
+            const startStr = sevenDaysAgo.toISOString().slice(0, 10);
+            const endStr = now.toISOString().slice(0, 10);
+            document.getElementById('reviewPeriod').textContent = `📅 ${startStr} ~ ${endStr}`;
+
+            // 筛选最近7天的日志
+            const recentLogs = logs.filter(log => {
+                if (!log.time) return false;
+                const logDate = log.time.slice(0, 10);
+                return logDate >= startStr && logDate <= endStr;
+            });
+
+            const total = recentLogs.length;
+            let effective = 0,
+                ineffective = 0,
+                pending = 0,
+                unknown = 0;
+
+            // 统计现象和操作分布
+            const phenMap = {};
+            const actionMap = {};
+
+            for (const log of recentLogs) {
+                // 判断有效性
+                const bA = log.beforeAcos;
+                const aA = log.afterAcos;
+                const bC = parseInt(log.beforeConversions) || 0;
+                const aC = parseInt(log.afterConversions) || 0;
+
+                if (bA !== undefined && bA !== null && bA !== '' && aA !== undefined && aA !== null && aA !== '') {
+                    if (aA < bA && aC >= bC) effective++;
+                    else if (aA < bA && aC < bC) pending++;
+                    else if (aA >= bA) ineffective++;
+                } else {
+                    unknown++;
+                }
+
+                // 统计现象
+                if (log.phenomenon) {
+                    const key = log.phenomenon;
+                    phenMap[key] = (phenMap[key] || 0) + 1;
+                }
+                // 统计操作
+                if (log.action) {
+                    const key = log.action;
+                    actionMap[key] = (actionMap[key] || 0) + 1;
+                }
+            }
+
+            document.getElementById('rTotal').textContent = total;
+            document.getElementById('rEffective').textContent = effective;
+            document.getElementById('rIneffective').textContent = ineffective;
+            document.getElementById('rPending').textContent = pending;
+
+            // 现象分布
+            const phenContainer = document.getElementById('rPhenomenon');
+            const phenEntries = Object.entries(phenMap).sort((a, b) => b[1] - a[1]);
+            if (phenEntries.length === 0) {
+                phenContainer.innerHTML = '<span style="color:#8a9aae;font-size:12px;">暂无数据</span>';
+            } else {
+                phenContainer.innerHTML = phenEntries.map(([k, v]) =>
+                    `<span class="item"><span class="count">${v}</span> ${k}</span>`
+                ).join('');
+            }
+
+            // 操作分布
+            const actionContainer = document.getElementById('rAction');
+            const actionEntries = Object.entries(actionMap).sort((a, b) => b[1] - a[1]);
+            if (actionEntries.length === 0) {
+                actionContainer.innerHTML = '<span style="color:#8a9aae;font-size:12px;">暂无数据</span>';
+            } else {
+                actionContainer.innerHTML = actionEntries.map(([k, v]) =>
+                    `<span class="item"><span class="count">${v}</span> ${k}</span>`
+                ).join('');
+            }
+
+            modal.classList.add('open');
+        }
+
+        function closeReview() {
+            document.getElementById('reviewModal').classList.remove('open');
+        }
 
         // ================================================================
         //  日期快捷功能
@@ -998,9 +1548,6 @@
             closeDateDropdown();
         }
 
-        // ================================================================
-        //  日期浮层控制
-        // ================================================================
         function toggleDateDropdown(e) {
             e.stopPropagation();
             const dropdown = document.getElementById('dateQuickDropdown');
@@ -1014,7 +1561,6 @@
         // ================================================================
         //  Excel 导入 / 导出 / 下载模版
         // ================================================================
-
         function getStandardHeaders() {
             return ['日期', '活动名称', '类型', '竞价策略', '预算', '花费', '曝光', '点击', '转化', '供货价', ...customCols];
         }
@@ -1111,7 +1657,13 @@
                             clicks,
                             conversions,
                             sales,
-                            custom: {}
+                            custom: {},
+                            phenomenon: '',
+                            reason: '',
+                            action: '',
+                            beforeAcos: undefined,
+                            beforeSpend: undefined,
+                            beforeConversions: undefined
                         };
                         for (const col of customColsInFile) {
                             record.custom[col] = row[col] || '';
@@ -1125,7 +1677,17 @@
                     }
 
                     saveAll();
-                    addLog('导入', 'Excel 文件', `成功导入 ${importedCount} 条记录${skippedCount > 0 ? `，跳过 ${skippedCount} 条无效行` : ''}`);
+                    // 导入也记录日志
+                    const logEntry = {
+                        time: new Date().toISOString().replace('T', ' ').slice(0, 16),
+                        operation: '导入',
+                        campaign: 'Excel文件',
+                        phenomenon: '',
+                        reason: '',
+                        action: '',
+                        detail: `成功导入 ${importedCount} 条记录${skippedCount > 0 ? `，跳过 ${skippedCount} 条无效行` : ''}`
+                    };
+                    addLogEntry(logEntry);
                     renderAll();
                     alert(`✅ 导入完成！\n成功：${importedCount} 条\n跳过：${skippedCount} 条`);
                 } catch (err) {
@@ -1226,6 +1788,11 @@
             loadAll();
             renderAll();
 
+            // 建议检索
+            setupSuggest('fPhenomenon', 'suggestPhenomenon', 'phenomenon');
+            setupSuggest('fReason', 'suggestReason', 'reason');
+            setupSuggest('fAction', 'suggestAction', 'action');
+
             document.getElementById('openAddBtn').addEventListener('click', () => openModal(-1));
             document.getElementById('closeModalBtn').addEventListener('click', closeModal);
             document.getElementById('saveBtn').addEventListener('click', saveRecord);
@@ -1233,6 +1800,8 @@
             document.getElementById('clearBtn').addEventListener('click', clearAll);
             document.getElementById('applyFilterBtn').addEventListener('click', applyFilter);
             document.getElementById('resetFilterBtn').addEventListener('click', resetFilter);
+            document.getElementById('reviewBtn').addEventListener('click', openReview);
+            document.getElementById('closeReviewBtn').addEventListener('click', closeReview);
 
             document.getElementById('downloadTemplateBtn').addEventListener('click', downloadTemplate);
 
@@ -1246,7 +1815,6 @@
                 }
             });
 
-            // 实时计算销售额
             document.getElementById('fConversions').addEventListener('input', updateAutoSales);
             document.getElementById('fSupplyPrice').addEventListener('input', updateAutoSales);
 
@@ -1263,16 +1831,17 @@
             document.getElementById('colManagerModal').addEventListener('click', function(e) {
                 if (e.target === this) closeColManager();
             });
+            document.getElementById('reviewModal').addEventListener('click', function(e) {
+                if (e.target === this) closeReview();
+            });
 
             document.getElementById('campaignSearch').addEventListener('keyup', function(e) {
                 if (e.key === 'Enter') applyFilter();
             });
 
-            // 日期快捷浮层触发
             const dateInputGroup = document.getElementById('dateInputGroup');
             dateInputGroup.addEventListener('click', toggleDateDropdown);
 
-            // 点击浮层内的快捷按钮
             document.querySelectorAll('.date-quick').forEach(btn => {
                 btn.addEventListener('click', function(e) {
                     e.stopPropagation();
@@ -1281,7 +1850,6 @@
                 });
             });
 
-            // 点击其他地方关闭浮层
             document.addEventListener('click', function(e) {
                 const wrapper = document.getElementById('datePickerWrapper');
                 if (!wrapper.contains(e.target)) {
