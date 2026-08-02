@@ -131,11 +131,85 @@
         .filter-bar input[type="text"] {
             min-width: 140px;
         }
-        .filter-bar .date-quick-group {
-            display: flex;
-            flex-wrap: wrap;
+
+        /* 日期快捷浮层 */
+        .date-picker-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
             gap: 4px;
         }
+        .date-picker-wrapper .date-input-group {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #fafcff;
+            border: 1px solid #dce3ec;
+            border-radius: 10px;
+            padding: 0 8px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .date-picker-wrapper .date-input-group:hover {
+            border-color: #2c6fbb;
+        }
+        .date-picker-wrapper .date-input-group input[type="date"] {
+            border: none;
+            background: transparent;
+            padding: 6px 4px;
+            font-size: 13px;
+            width: 130px;
+            cursor: pointer;
+            outline: none;
+        }
+        .date-picker-wrapper .date-input-group input[type="date"]::-webkit-calendar-picker-indicator {
+            display: none;
+        }
+        .date-picker-wrapper .date-input-group .date-icon {
+            font-size: 16px;
+            color: #6b7a8f;
+            line-height: 1;
+            user-select: none;
+        }
+        .date-picker-wrapper .date-input-group .date-separator {
+            color: #8a9aae;
+            font-size: 13px;
+            padding: 0 2px;
+        }
+
+        .date-quick-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+            border: 1px solid #eef2f7;
+            padding: 12px 16px;
+            display: none;
+            z-index: 100;
+            min-width: 180px;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .date-quick-dropdown.open {
+            display: flex;
+        }
+        .date-quick-dropdown .btn {
+            font-size: 12px;
+            padding: 4px 14px;
+            border-radius: 20px;
+            background: #f0f4f9;
+            border: none;
+            cursor: pointer;
+            transition: 0.15s;
+            color: #1a2a3a;
+        }
+        .date-quick-dropdown .btn:hover {
+            background: #dbeafe;
+            color: #1a3a5c;
+        }
+
         .chart-card {
             background: white;
             border-radius: 20px;
@@ -403,22 +477,28 @@
 
         <!-- ===== 筛选栏 ===== -->
         <div class="filter-bar">
-            <!-- 日期范围 + 快捷按钮 -->
+            <!-- 日期范围 + 快捷浮层 -->
             <div class="group" style="flex-wrap: wrap; gap: 8px;">
                 <label>📅 日期</label>
-                <input type="date" id="startDate" />
-                <span style="color:#8a9aae;">至</span>
-                <input type="date" id="endDate" />
-                <div class="date-quick-group">
-                    <button class="btn btn-outline btn-sm date-quick" data-range="today">今天</button>
-                    <button class="btn btn-outline btn-sm date-quick" data-range="yesterday">昨天</button>
-                    <button class="btn btn-outline btn-sm date-quick" data-range="7d">最近7天</button>
-                    <button class="btn btn-outline btn-sm date-quick" data-range="14d">最近14天</button>
-                    <button class="btn btn-outline btn-sm date-quick" data-range="30d">最近30天</button>
-                    <button class="btn btn-outline btn-sm date-quick" data-range="month">本月</button>
-                    <button class="btn btn-outline btn-sm date-quick" data-range="lastmonth">上月</button>
-                    <button class="btn btn-outline btn-sm date-quick" data-range="yeartodate">今年至今</button>
-                    <button class="btn btn-outline btn-sm date-quick" data-range="all">全部</button>
+                <div class="date-picker-wrapper" id="datePickerWrapper">
+                    <div class="date-input-group" id="dateInputGroup">
+                        <input type="date" id="startDate" />
+                        <span class="date-separator">至</span>
+                        <input type="date" id="endDate" />
+                        <span class="date-icon">⌄</span>
+                    </div>
+                    <!-- 快捷浮层 -->
+                    <div class="date-quick-dropdown" id="dateQuickDropdown">
+                        <button class="btn date-quick" data-range="today">今天</button>
+                        <button class="btn date-quick" data-range="yesterday">昨天</button>
+                        <button class="btn date-quick" data-range="7d">最近7天</button>
+                        <button class="btn date-quick" data-range="14d">最近14天</button>
+                        <button class="btn date-quick" data-range="30d">最近30天</button>
+                        <button class="btn date-quick" data-range="month">本月</button>
+                        <button class="btn date-quick" data-range="lastmonth">上月</button>
+                        <button class="btn date-quick" data-range="yeartodate">今年至今</button>
+                        <button class="btn date-quick" data-range="all">全部</button>
+                    </div>
                 </div>
             </div>
             <!-- 活动搜索 -->
@@ -915,6 +995,20 @@
                     return;
             }
             setDateRange(start, end);
+            closeDateDropdown();
+        }
+
+        // ================================================================
+        //  日期浮层控制
+        // ================================================================
+        function toggleDateDropdown(e) {
+            e.stopPropagation();
+            const dropdown = document.getElementById('dateQuickDropdown');
+            dropdown.classList.toggle('open');
+        }
+
+        function closeDateDropdown() {
+            document.getElementById('dateQuickDropdown').classList.remove('open');
         }
 
         // ================================================================
@@ -1174,12 +1268,25 @@
                 if (e.key === 'Enter') applyFilter();
             });
 
-            // 日期快捷按钮
+            // 日期快捷浮层触发
+            const dateInputGroup = document.getElementById('dateInputGroup');
+            dateInputGroup.addEventListener('click', toggleDateDropdown);
+
+            // 点击浮层内的快捷按钮
             document.querySelectorAll('.date-quick').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
                     const range = this.dataset.range;
                     handleDateQuick(range);
                 });
+            });
+
+            // 点击其他地方关闭浮层
+            document.addEventListener('click', function(e) {
+                const wrapper = document.getElementById('datePickerWrapper');
+                if (!wrapper.contains(e.target)) {
+                    closeDateDropdown();
+                }
             });
 
             window.addEventListener('resize', function() {
