@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>广告数据工作台-搭建中</title>
-    <!-- ECharts -->
+    <title>广告数据工作台 · 全功能版</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
     </script>
-    <!-- SheetJS (XLSX) -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* ===== 样式（与之前一致，为节省篇幅此处略去，但实际代码会完整包含） ===== */
         * {
             margin: 0;
             padding: 0;
@@ -133,6 +130,11 @@
         }
         .filter-bar input[type="text"] {
             min-width: 140px;
+        }
+        .filter-bar .date-quick-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
         }
         .chart-card {
             background: white;
@@ -366,33 +368,18 @@
             padding-top: 16px;
             border-top: 1px solid #eef2f7;
         }
-        .modal .custom-field-row {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        .modal .custom-field-row input {
-            flex: 1;
-        }
-        .col-manager .col-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 0;
-            border-bottom: 1px solid #f0f4f9;
-        }
-        @media (max-width: 700px) {
-            .modal .form-row {
-                grid-template-columns: 1fr;
-            }
-            .filter-bar .group {
-                flex-wrap: wrap;
-            }
-        }
         .modal .manage-col-section {
             margin: 12px 0 8px;
             text-align: right;
+        }
+        .auto-calc-hint {
+            font-size: 13px;
+            color: #0b6e4f;
+            background: #d1fae5;
+            padding: 6px 14px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 4px;
         }
         #fileInput {
             display: none;
@@ -414,17 +401,32 @@
             <input type="file" id="fileInput" accept=".xlsx,.xls" />
         </header>
 
+        <!-- ===== 筛选栏 ===== -->
         <div class="filter-bar">
-            <div class="group">
+            <!-- 日期范围 + 快捷按钮 -->
+            <div class="group" style="flex-wrap: wrap; gap: 8px;">
                 <label>📅 日期</label>
                 <input type="date" id="startDate" />
                 <span style="color:#8a9aae;">至</span>
                 <input type="date" id="endDate" />
+                <div class="date-quick-group">
+                    <button class="btn btn-outline btn-sm date-quick" data-range="today">今天</button>
+                    <button class="btn btn-outline btn-sm date-quick" data-range="yesterday">昨天</button>
+                    <button class="btn btn-outline btn-sm date-quick" data-range="7d">最近7天</button>
+                    <button class="btn btn-outline btn-sm date-quick" data-range="14d">最近14天</button>
+                    <button class="btn btn-outline btn-sm date-quick" data-range="30d">最近30天</button>
+                    <button class="btn btn-outline btn-sm date-quick" data-range="month">本月</button>
+                    <button class="btn btn-outline btn-sm date-quick" data-range="lastmonth">上月</button>
+                    <button class="btn btn-outline btn-sm date-quick" data-range="yeartodate">今年至今</button>
+                    <button class="btn btn-outline btn-sm date-quick" data-range="all">全部</button>
+                </div>
             </div>
+            <!-- 活动搜索 -->
             <div class="group">
                 <label>🔍 活动</label>
                 <input type="text" id="campaignSearch" placeholder="搜索活动名称..." />
             </div>
+            <!-- 应用/重置 -->
             <div class="group">
                 <button class="btn btn-primary btn-sm" id="applyFilterBtn">应用</button>
                 <button class="btn btn-outline btn-sm" id="resetFilterBtn">重置</button>
@@ -509,7 +511,13 @@
             </div>
             <div class="form-row">
                 <div class="form-group"><label>转化 (订单)</label><input type="number" id="fConversions" step="1" min="0" placeholder="0" /></div>
-                <div class="form-group"><label>销售额 ($)</label><input type="number" id="fSales" step="0.01" min="0" placeholder="0.00" /></div>
+                <div class="form-group">
+                    <label>供货价 ($)</label>
+                    <input type="number" id="fSupplyPrice" step="0.01" min="0" placeholder="0.00" />
+                </div>
+            </div>
+            <div style="text-align:right; margin-top:-8px; margin-bottom:8px;">
+                <span class="auto-calc-hint" id="autoSalesDisplay">📊 预计销售额: $0.00</span>
             </div>
             <div id="customFieldsContainer"></div>
             <div class="manage-col-section">
@@ -574,16 +582,16 @@
         }
 
         function deriveMetrics(r) {
-            const spend = Number(r.spend) || 0,
-                clicks = Number(r.clicks) || 0,
-                impressions = Number(r.impressions) || 0;
-            const conversions = Number(r.conversions) || 0,
-                sales = Number(r.sales) || 0;
+            const spend = Number(r.spend) || 0;
+            const clicks = Number(r.clicks) || 0;
+            const impressions = Number(r.impressions) || 0;
+            const conversions = Number(r.conversions) || 0;
+            const sales = Number(r.sales) || 0;
             const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
             const cvr = clicks > 0 ? (conversions / clicks) * 100 : 0;
             const cpc = clicks > 0 ? spend / clicks : 0;
             const acos = sales > 0 ? (spend / sales) * 100 : 0;
-            return { ...r, ctr, cvr, cpc, acos };
+            return { ...r, ctr, cvr, cpc, acos, sales };
         }
 
         function getFilteredData() {
@@ -747,7 +755,9 @@
             document.getElementById('fImpressions').value = d ? d.impressions : '';
             document.getElementById('fClicks').value = d ? d.clicks : '';
             document.getElementById('fConversions').value = d ? d.conversions : '';
-            document.getElementById('fSales').value = d ? d.sales : '';
+            document.getElementById('fSupplyPrice').value = '';
+            updateAutoSales();
+
             const container = document.getElementById('customFieldsContainer');
             container.innerHTML = '';
             for (const col of customCols) {
@@ -765,6 +775,13 @@
         function closeModal() { document.getElementById('dataModal').classList.remove('open');
             editIndex = -1; }
 
+        function updateAutoSales() {
+            const conv = parseInt(document.getElementById('fConversions').value) || 0;
+            const price = parseFloat(document.getElementById('fSupplyPrice').value) || 0;
+            const sales = conv * price;
+            document.getElementById('autoSalesDisplay').textContent = `📊 预计销售额: $${sales.toFixed(2)}`;
+        }
+
         function saveRecord() {
             const date = document.getElementById('fDate').value;
             const campaign = document.getElementById('fCampaign').value.trim() || '未命名';
@@ -775,7 +792,8 @@
             const impressions = parseInt(document.getElementById('fImpressions').value) || 0;
             const clicks = parseInt(document.getElementById('fClicks').value) || 0;
             const conversions = parseInt(document.getElementById('fConversions').value) || 0;
-            const sales = parseFloat(document.getElementById('fSales').value) || 0;
+            const supplyPrice = parseFloat(document.getElementById('fSupplyPrice').value) || 0;
+            const sales = conversions * supplyPrice;
 
             if (!date) { alert('请选择日期'); return; }
 
@@ -818,18 +836,101 @@
         };
 
         // ================================================================
-        //  Excel 导入 / 导出 / 下载模版（新）
+        //  日期快捷功能
         // ================================================================
-
-        // 获取标准表头（包含自定义列）
-        function getStandardHeaders() {
-            return ['日期', '活动名称', '类型', '竞价策略', '预算', '花费', '曝光', '点击', '转化', '销售额', ...customCols];
+        function setDateRange(start, end) {
+            document.getElementById('startDate').value = start;
+            document.getElementById('endDate').value = end;
+            applyFilter();
         }
 
-        // 将记录转换为数组（用于导出或模版）
+        function getDateStr(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function handleDateQuick(range) {
+            const today = new Date();
+            const todayStr = getDateStr(today);
+            let start, end;
+
+            switch (range) {
+                case 'today':
+                    start = end = todayStr;
+                    break;
+                case 'yesterday': {
+                    const y = new Date(today);
+                    y.setDate(today.getDate() - 1);
+                    const s = getDateStr(y);
+                    start = end = s;
+                    break;
+                }
+                case '7d': {
+                    const s = new Date(today);
+                    s.setDate(today.getDate() - 6);
+                    start = getDateStr(s);
+                    end = todayStr;
+                    break;
+                }
+                case '14d': {
+                    const s = new Date(today);
+                    s.setDate(today.getDate() - 13);
+                    start = getDateStr(s);
+                    end = todayStr;
+                    break;
+                }
+                case '30d': {
+                    const s = new Date(today);
+                    s.setDate(today.getDate() - 29);
+                    start = getDateStr(s);
+                    end = todayStr;
+                    break;
+                }
+                case 'month': {
+                    const s = new Date(today.getFullYear(), today.getMonth(), 1);
+                    start = getDateStr(s);
+                    end = todayStr;
+                    break;
+                }
+                case 'lastmonth': {
+                    const s = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    const e = new Date(today.getFullYear(), today.getMonth(), 0);
+                    start = getDateStr(s);
+                    end = getDateStr(e);
+                    break;
+                }
+                case 'yeartodate': {
+                    const s = new Date(today.getFullYear(), 0, 1);
+                    start = getDateStr(s);
+                    end = todayStr;
+                    break;
+                }
+                case 'all':
+                    start = '';
+                    end = '';
+                    break;
+                default:
+                    return;
+            }
+            setDateRange(start, end);
+        }
+
+        // ================================================================
+        //  Excel 导入 / 导出 / 下载模版
+        // ================================================================
+
+        function getStandardHeaders() {
+            return ['日期', '活动名称', '类型', '竞价策略', '预算', '花费', '曝光', '点击', '转化', '供货价', ...customCols];
+        }
+
         function recordsToRows(recordsArray) {
             const headers = getStandardHeaders();
             const rows = recordsArray.map(d => {
+                const conv = Number(d.conversions) || 0;
+                const sales = Number(d.sales) || 0;
+                const supplyPrice = conv > 0 ? sales / conv : 0;
                 const base = [
                     d.date || '',
                     d.campaign || '',
@@ -840,7 +941,7 @@
                     Number(d.impressions) || 0,
                     Number(d.clicks) || 0,
                     Number(d.conversions) || 0,
-                    Number(d.sales).toFixed(2)
+                    supplyPrice.toFixed(2)
                 ];
                 const customVals = customCols.map(col => (d.custom && d.custom[col] !== undefined) ? d.custom[col] : '');
                 return [...base, ...customVals];
@@ -848,16 +949,14 @@
             return { headers, rows };
         }
 
-        // 下载模版
         function downloadTemplate() {
-            const { headers, rows } = recordsToRows([]); // 空数据，只有表头
+            const { headers, rows } = recordsToRows([]);
             const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet([headers]); // 只有一行表头
+            const ws = XLSX.utils.aoa_to_sheet([headers]);
             XLSX.utils.book_append_sheet(wb, ws, '模版');
             XLSX.writeFile(wb, '模版_广告数据.xlsx');
         }
 
-        // 导入 Excel
         function importExcel(file) {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -870,9 +969,7 @@
                         alert('文件为空或格式不正确');
                         return;
                     }
-                    // 获取表头
                     const headers = Object.keys(json[0]);
-                    // 标准字段映射（中文 → 内部字段）
                     const fieldMap = {
                         '日期': 'date',
                         '活动名称': 'campaign',
@@ -883,40 +980,50 @@
                         '曝光': 'impressions',
                         '点击': 'clicks',
                         '转化': 'conversions',
+                        '供货价': 'supplyPrice',
                         '销售额': 'sales'
                     };
-                    // 识别自定义列（不在标准映射中的）
-                    const customColsInFile = headers.filter(h => !fieldMap[h] && h !== 'CTR%' && h !== 'ACOS%' && h !==
-                        'CPC');
+                    const customColsInFile = headers.filter(h => !fieldMap[h]);
                     let importedCount = 0;
                     let skippedCount = 0;
 
                     for (const row of json) {
-                        // 构建记录
+                        const date = row['日期'] || '';
+                        const campaign = row['活动名称'] || '未命名';
+                        const type = row['类型'] || 'SP';
+                        const strategy = row['竞价策略'] || '仅降低';
+                        const budget = parseFloat(row['预算']) || 0;
+                        const spend = parseFloat(row['花费']) || 0;
+                        const impressions = parseInt(row['曝光']) || 0;
+                        const clicks = parseInt(row['点击']) || 0;
+                        const conversions = parseInt(row['转化']) || 0;
+                        let supplyPrice = parseFloat(row['供货价']) || 0;
+                        if (supplyPrice === 0 && row['销售额'] !== undefined && row['销售额'] !== '') {
+                            const sales = parseFloat(row['销售额']) || 0;
+                            if (conversions > 0) supplyPrice = sales / conversions;
+                        }
+                        const sales = conversions * supplyPrice;
+
+                        if (!date) { skippedCount++; continue; }
+
                         const record = {
-                            date: row['日期'] || '',
-                            campaign: row['活动名称'] || '未命名',
-                            type: row['类型'] || 'SP',
-                            strategy: row['竞价策略'] || '仅降低',
-                            budget: parseFloat(row['预算']) || 0,
-                            spend: parseFloat(row['花费']) || 0,
-                            impressions: parseInt(row['曝光']) || 0,
-                            clicks: parseInt(row['点击']) || 0,
-                            conversions: parseInt(row['转化']) || 0,
-                            sales: parseFloat(row['销售额']) || 0,
+                            date,
+                            campaign,
+                            type,
+                            strategy,
+                            budget,
+                            spend,
+                            impressions,
+                            clicks,
+                            conversions,
+                            sales,
                             custom: {}
                         };
-                        // 处理自定义列
                         for (const col of customColsInFile) {
                             record.custom[col] = row[col] || '';
-                            // 如果该列不在全局 customCols 中，则添加
                             if (!customCols.includes(col)) {
                                 customCols.push(col);
                             }
-                        }
-                        if (!record.date) {
-                            skippedCount++;
-                            continue;
                         }
                         record.id = Date.now() + '_' + Math.random().toString(36).slice(2, 6) + '_' + importedCount;
                         records.push(record);
@@ -935,7 +1042,6 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // 导出 Excel（筛选后的数据）
         function exportExcel() {
             const filtered = getFilteredData();
             if (filtered.length === 0) { alert('没有数据可导出'); return; }
@@ -1034,10 +1140,8 @@
             document.getElementById('applyFilterBtn').addEventListener('click', applyFilter);
             document.getElementById('resetFilterBtn').addEventListener('click', resetFilter);
 
-            // 下载模版
             document.getElementById('downloadTemplateBtn').addEventListener('click', downloadTemplate);
 
-            // 导入 - 触发文件选择
             document.getElementById('importBtn').addEventListener('click', function() {
                 document.getElementById('fileInput').click();
             });
@@ -1048,7 +1152,10 @@
                 }
             });
 
-            // 管理列（从添加记录弹窗内触发）
+            // 实时计算销售额
+            document.getElementById('fConversions').addEventListener('input', updateAutoSales);
+            document.getElementById('fSupplyPrice').addEventListener('input', updateAutoSales);
+
             document.getElementById('manageColFromModalBtn').addEventListener('click', function(e) {
                 e.stopPropagation();
                 openColManager();
@@ -1056,7 +1163,6 @@
             document.getElementById('closeColManager').addEventListener('click', closeColManager);
             document.getElementById('addColBtn').addEventListener('click', addCustomCol);
 
-            // 模态框外部关闭
             document.getElementById('dataModal').addEventListener('click', function(e) {
                 if (e.target === this) closeModal();
             });
@@ -1064,9 +1170,16 @@
                 if (e.target === this) closeColManager();
             });
 
-            // 回车搜索
             document.getElementById('campaignSearch').addEventListener('keyup', function(e) {
                 if (e.key === 'Enter') applyFilter();
+            });
+
+            // 日期快捷按钮
+            document.querySelectorAll('.date-quick').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const range = this.dataset.range;
+                    handleDateQuick(range);
+                });
             });
 
             window.addEventListener('resize', function() {
