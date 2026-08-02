@@ -9,7 +9,6 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js">
     </script>
     <style>
-        /* ===== 基础样式 ===== */
         * {
             margin: 0;
             padding: 0;
@@ -693,8 +692,7 @@
             <input type="file" id="productFileInput" accept=".xlsx,.xls" />
         </header>
 
-        <!-- ============================================================ -->
-        <!-- 广告看板页面 -->
+        <!-- ===== 广告看板页面 ===== -->
         <div class="page active" id="page-ad">
             <div class="filter-bar">
                 <div class="group" style="flex-wrap: wrap; gap: 8px;">
@@ -786,8 +784,7 @@
             </div>
         </div>
 
-        <!-- ============================================================ -->
-        <!-- 产品管理页面 -->
+        <!-- ===== 产品管理页面 ===== -->
         <div class="page" id="page-product">
             <div class="card">
                 <div class="card-header">
@@ -818,7 +815,6 @@
         <div class="modal-overlay" id="dataModal">
             <div class="modal">
                 <h3 id="modalTitle">📊 添加广告记录</h3>
-                <!-- 操作意图 -->
                 <div class="section-title">🎯 操作意图</div>
                 <div class="form-row">
                     <div class="form-group suggest-box">
@@ -837,7 +833,7 @@
                     <input type="text" id="fAction" placeholder="例如：调低竞价 / 否词" autocomplete="off" />
                     <div class="suggest-list" id="suggestAction"></div>
                 </div>
-                <!-- 操作前数据 -->
+
                 <div class="section-divider"></div>
                 <div class="section-title">📊 操作前数据（用于对比效果）</div>
                 <div class="form-row">
@@ -845,7 +841,7 @@
                     <div class="form-group"><label>操作前 花费 ($)</label><input type="number" id="fBeforeSpend" step="0.01" min="0" placeholder="例如 12.50" /></div>
                     <div class="form-group"><label>操作前 转化 (单)</label><input type="number" id="fBeforeConversions" step="1" min="0" placeholder="例如 3" /></div>
                 </div>
-                <!-- 投放产品 -->
+
                 <div class="section-divider"></div>
                 <div class="section-title">📦 投放产品</div>
                 <div class="form-group suggest-box">
@@ -857,7 +853,7 @@
                     <div class="form-group"><label>型号（自动匹配）</label><input type="text" id="fModel" readonly placeholder="自动填充" style="background:#f4f7fc;" /></div>
                     <div class="form-group"><label>供货价（自动匹配）</label><input type="text" id="fSupplyPrice" readonly placeholder="自动填充" style="background:#f4f7fc;" /></div>
                 </div>
-                <!-- 数据录入 -->
+
                 <div class="section-divider"></div>
                 <div class="section-title">📋 数据录入</div>
                 <div class="form-row">
@@ -884,7 +880,6 @@
                     <div class="form-group"><label>转化 (订单)</label><input type="number" id="fConversions" step="1" min="0" placeholder="0" /></div>
                     <div class="form-group"><label>亚马逊销售额 ($)</label><input type="number" id="fAmazonSales" step="0.01" min="0" placeholder="0.00" /></div>
                 </div>
-                <!-- 实际销售额由系统自动计算，只读显示 -->
                 <div class="form-group">
                     <label>实际销售额 ($) <span style="color:#6b7a8f;font-weight:400;">（自动计算：供货价 × 转化）</span></label>
                     <input type="text" id="fActualSalesDisplay" readonly placeholder="自动计算" style="background:#f4f7fc;font-weight:600;color:#0b6e4f;" />
@@ -1002,13 +997,11 @@
                     action: [], asin: [] }; } catch { suggestData = { phenomenon: [], reason: [], action: [], asin: [] }; }
             try { products = JSON.parse(localStorage.getItem(STORAGE_KEY_PRODUCTS)) || []; } catch { products = []; }
             records = records.map(r => { if (!r.custom) r.custom = {}; return r; });
-            // 兼容旧记录
             records = records.map(r => {
                 if (!r.asin) r.asin = '';
                 if (!r.model) r.model = '';
                 if (!r.supplyPrice) r.supplyPrice = 0;
                 if (r.amazonSales === undefined) r.amazonSales = r.sales || 0;
-                // 实际销售额由供货价*转化计算，不存储
                 return r;
             });
         }
@@ -1053,7 +1046,6 @@
             const impressions = Number(r.impressions) || 0;
             const conversions = Number(r.conversions) || 0;
             const amazonSales = Number(r.amazonSales) || 0;
-            // 实际销售额 = 供货价 × 转化
             const supplyPrice = Number(r.supplyPrice) || 0;
             const actualSales = supplyPrice * conversions;
             const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
@@ -1216,7 +1208,6 @@
             chartInstance.resize();
         }
 
-        // ===== 操作日志 =====
         function renderLogs() {
             const container = document.getElementById('logList');
             if (logs.length === 0) {
@@ -1296,7 +1287,6 @@
             container.innerHTML = html;
         }
 
-        // ===== 产品管理渲染 =====
         function renderProductTable() {
             const tbody = document.getElementById('productTableBody');
             if (products.length === 0) {
@@ -1374,10 +1364,7 @@
                 document.getElementById('fSupplyPrice').value = '';
             }
 
-            // 更新实际销售额显示
             updateActualSalesDisplay();
-
-            // 更新ACOS预览
             updateAcosPreview();
 
             const container = document.getElementById('customFieldsContainer');
@@ -2082,12 +2069,6 @@
             const filtered = getFilteredData();
             if (filtered.length === 0) { alert('没有数据可导出'); return; }
             const { headers, rows } = adRecordsToRows(filtered);
-            // 导出时加上实际销售额（计算列）方便查看
-            const exportHeaders = [...headers];
-            const exportRows = rows.map(row => [...row]);
-            // 在导出中添加实际销售额列（计算值）
-            // 但实际销售额 = 供货价×转化，而供货价不在导出列中，所以导出时我们额外加一列
-            // 简单起见：直接复用headers，不添加额外列，因为实际销售额可以在看板中看
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
             XLSX.utils.book_append_sheet(wb, ws, '广告数据');
