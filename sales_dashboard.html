@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>产品管理看板（独立测试版）</title>
     <style>
+         /* 让配置列的列表横向排列 */
+        #productConfigList {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); /* 自适应网格 */
+            gap: 12px;
+        }
+        /* 稍微调整一下每个选项的样式，适应网格 */
+        .col-config-item {
+            margin-bottom: 0 !important; /* 覆盖之前的 margin-bottom */
+            padding: 10px 14px;
+        }
         /* 基础样式与之前保持一致，方便后期合并 */
         body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; padding: 20px; }
         .dashboard-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
@@ -292,8 +303,7 @@ function product_resetForm() {
         if (el) el.value = (col.type === 'number' || col.type === 'dimension') ? '0' : '';
     });
 }
-
-// ---------- 渲染表格 ----------
+// ---------- 渲染表格（添加了编辑按钮） ----------
 function product_renderTable() {
     const thead = document.getElementById('productTableHead');
     const tbody = document.getElementById('productTableBody');
@@ -302,9 +312,9 @@ function product_renderTable() {
     // 1. 表头
     const visibleCols = productCols.filter(c => c.visible);
     thead.innerHTML = `<tr>
-        <th style="width:50px;">#</th>
+        <th style="width:40px;">#</th>
         ${visibleCols.map(c => `<th>${c.label}</th>`).join('')}
-        <th style="width:100px;">操作</th>
+        <th style="width:150px;">操作</th>
     </tr>`;
 
     // 2. 数据行
@@ -322,7 +332,7 @@ function product_renderTable() {
         visibleCols.forEach(col => {
             let val = item[col.key] !== undefined ? item[col.key] : '';
             if (col.type === 'dimension' && productIsInch && typeof val === 'number') {
-                val = (val / 2.54).toFixed(2); // 转英寸
+                val = (val / 2.54).toFixed(2);
             }
             if (col.type === 'asin' && val && val !== '-') {
                 val = `<a href="https://www.amazon.com/dp/${val}" target="_blank" style="color:#2563eb;">${val}</a>`;
@@ -335,14 +345,16 @@ function product_renderTable() {
             }
             html += `<td>${val || '-'}</td>`;
         });
+        
+        // 【新增】操作列加入 编辑 和 删除
         html += `<td>
-            <button class="btn-danger" style="padding:4px 8px;font-size:12px;" onclick="product_deleteRecord(${idx})">删除</button>
+            <button style="background:#2563eb;padding:4px 10px;font-size:12px;margin-right:5px;" onclick="product_openEditModal(${idx})">✏️编辑</button>
+            <button class="btn-danger" style="padding:4px 10px;font-size:12px;" onclick="product_deleteRecord(${idx})">删除</button>
         </td>`;
         tr.innerHTML = html;
         tbody.appendChild(tr);
     });
 }
-
 // ---------- 删除 ----------
 function product_deleteRecord(idx) {
     if (confirm('确定要删除该产品吗？')) {
@@ -352,7 +364,68 @@ function product_deleteRecord(idx) {
         product_showMsg('已删除', 'success');
     }
 }
+// ---------- 编辑弹窗逻辑 ----------
+let productEditIdx = null; // 保存当前正在编辑的是第几行
 
+// 1. 打开编辑弹窗，并填入数据
+function product_openEditModal(idx) {
+    productEditIdx = idx;
+    const item = productData[idx];
+    const container = document.getElementById('productEditForm');
+    container.innerHTML = '';
+    
+    // 动态生成输入框（只生成当前显示的列）
+    productCols.forEach(col => {
+        if (!col.visible) return;
+        const div = document.createElement('div');
+        div.className = 'form-group';
+        let inputHtml = `<label>${col.label}</label>`;
+        let val = item[col.key] !== undefined ? item[col.key] : '';
+        if (col.type === 'image') {
+            inputHtml += `<input type="text" id="p_edit_${col.key}" placeholder="图片URL" value="${val}" />`;
+        } else if (col.type === 'asin') {
+            inputHtml += `<input type="text" id="p_edit_${col.key}" placeholder="ASIN码" value="${val}" />`;
+        } else if (col.type === 'dimension') {
+            inputHtml += `<input type="number" step="0.1" id="p_edit_${col.key}" placeholder="0.0" value="${val}" />`;
+        } else {
+            inputHtml += `<input type="text" id="p_edit_${col.key}" placeholder="输入${col.label}" value="${val}" />`;
+        }
+        div.innerHTML = inputHtml;
+        container.appendChild(div);
+    });
+
+    document.getElementById('productEditModal').style.display = 'flex';
+}
+
+// 2. 关闭编辑弹窗
+function product_closeEditModal() {
+    document.getElementById('productEditModal').style.display = 'none';
+    productEditIdx = null;
+}
+
+// 3. 保存修改
+function product_saveEdit() {
+    if (productEditIdx === null) return;
+    const item = productData[productEditIdx];
+    
+    productCols.forEach(col => {
+        if (!col.visible) return;
+        const el = document.getElementById(`p_edit_${col.key}`);
+        if (el) {
+            const val = el.value.trim();
+            if (col.type === 'number' || col.type === 'dimension') {
+                item[col.key] = parseFloat(val) || 0;
+            } else {
+                item[col.key] = val;
+            }
+        }
+    });
+    
+    product_saveData();
+    product_renderTable();
+    product_closeEditModal();
+    product_showMsg('✅ 产品信息已更新！');
+}
 // ---------- 清空 ----------
 function product_clearAll() {
     if (confirm('⚠️ 确定清空所有产品数据？不可恢复！')) {
@@ -560,5 +633,21 @@ function product_showMsg(text, type = 'success') {
     setTimeout(() => { el.className = 'msg'; }, 4000);
 }
 </script>
+<!-- 编辑产品弹窗 -->
+<div id="productEditModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="margin:0;">✏️ 编辑产品信息</h3>
+            <button onclick="product_closeEditModal()" style="background:transparent;color:#6b7280;font-size:24px;">&times;</button>
+        </div>
+        <div id="productEditForm" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:15px; margin:15px 0;">
+            <!-- 由 JS 动态生成填入框 -->
+        </div>
+        <div style="text-align:right; border-top:1px solid #e2e8f0; padding-top:15px;">
+            <button onclick="product_closeEditModal()" class="btn-secondary" style="margin-right:10px;">取消</button>
+            <button onclick="product_saveEdit()" style="background:#059669;">💾 保存修改</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
