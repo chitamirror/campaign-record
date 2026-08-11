@@ -1,1 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>产品管理看板（独立测试版）</title>
+    <style>
+        /* 基础样式与之前保持一致，方便后期合并 */
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; padding: 20px; }
+        .dashboard-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .flex-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        input, select, textarea { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; }
+        button { padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #1d4ed8; }
+        .btn-danger { background: #dc2626; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-secondary { background: #6b7280; }
+        .btn-secondary:hover { background: #4b5563; }
+        .msg { margin-top: 10px; padding: 10px; border-radius: 6px; display: none; }
+        .msg-success { background: #dcfce7; color: #166534; display: block; }
+        .msg-error { background: #fee2e2; color: #991b1b; display: block; }
+        
+        /* 表格与自定义列样式 */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th { background: #f8fafc; padding: 10px; border-bottom: 2px solid #e2e8f0; text-align: left; position: sticky; top: 0; z-index: 10; }
+        td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+        .table-wrap { overflow-x: auto; max-height: 600px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+        .img-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #e2e8f0; }
+        .unit-toggle { display: inline-flex; align-items: center; gap: 10px; background: #f1f5f9; padding: 5px 15px; border-radius: 20px; }
+        
+        /* 自定义列配置面板（弹窗） */
+        .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:999; }
+        .modal-content { background:#fff; border-radius:16px; padding:30px; width:90%; max-width:800px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+        .modal-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:15px; margin-bottom:20px; }
+        .col-config-item { display:flex; align-items:center; gap:12px; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:8px; background:#fafafa; cursor:grab; }
+        .col-config-item:hover { background:#f1f5f9; }
+        .col-config-item .col-check { margin-right:8px; }
+        .col-config-item .col-label { flex:1; font-weight:500; }
+        .col-config-item .col-drag { color:#9ca3af; cursor:grab; }
+        .add-custom-col { display:flex; gap:10px; margin-top:15px; border-top:1px dashed #d1d5db; padding-top:15px; }
+        .add-custom-col input { flex:1; }
+        @media (max-width:600px) { .flex-row { flex-direction: column; } .modal-content { width:95%; padding:15px; } }
+    </style>
+</head>
+<body>
 
+<div id="productDashboard">
+    <h2 style="margin-top:0;">📦 产品管理看板</h2>
+
+    <!-- 消息提示 -->
+    <div id="productMsg" class="msg"></div>
+
+    <!-- 工具栏 -->
+    <div class="dashboard-card">
+        <div class="flex-row" style="justify-content:space-between; align-items:center;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button onclick="product_openConfigModal()">⚙️ 自定义列/排序</button>
+                <button onclick="document.getElementById('productFileInput').click()" style="background:#059669;">📁 导入CSV</button>
+                <button onclick="product_exportCSV()" style="background:#0d9488;">📤 导出CSV</button>
+                <button onclick="product_clearAll()" class="btn-danger">🗑️ 清空数据</button>
+            </div>
+            <div class="unit-toggle">
+                <span>📐 单位</span>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;">
+                    <input type="checkbox" id="productUnitToggle" onchange="product_toggleUnit()"> 
+                    <span id="productUnitLabel">CM</span>
+                </label>
+            </div>
+        </div>
+        <input type="file" id="productFileInput" accept=".csv" style="display:none;" onchange="product_importCSV(event)" />
+    </div>
+
+    <!-- 手动添加记录 -->
+    <div class="dashboard-card">
+        <h3>➕ 手动添加/修改产品</h3>
+        <div class="flex-row" style="grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); display:grid; gap:12px;">
+            <!-- 动态生成输入框（根据当前显示的列） -->
+            <div id="productAddForm" style="display:contents;"></div>
+            <div style="grid-column: 1 / -1; margin-top:10px; display:flex; gap:10px;">
+                <button onclick="product_submitAdd()">💾 添加产品</button>
+                <button onclick="product_resetForm()" class="btn-secondary">重置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="dashboard-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+            <h3 style="margin:0;">📋 产品列表 <span id="productCount" style="font-size:14px;font-weight:normal;color:#6b7280;"></span></h3>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead id="productTableHead"><tr></tr></thead>
+                <tbody id="productTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 自定义列配置模态框 -->
+<div id="productConfigModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 style="margin:0;">⚙️ 配置显示列 & 排序</h3>
+            <button onclick="product_closeConfigModal()" style="background:transparent;color:#6b7280;font-size:24px;">&times;</button>
+        </div>
+        <p style="color:#6b7280;font-size:14px;">勾选显示/隐藏，拖拽行调整顺序（从上到下 = 从左到右）。</p>
+        <div id="productConfigList"></div>
+        <div class="add-custom-col">
+            <input type="text" id="productNewCustomCol" placeholder="输入自定义列名（如：备注）" />
+            <button onclick="product_addCustomColumn()">➕ 添加自定义列</button>
+        </div>
+        <div style="margin-top:20px; text-align:right;">
+            <button onclick="product_closeConfigModal()" class="btn-secondary">关闭并生效</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// 产品管理 独立逻辑 (所有变量和函数加 product_ 前缀)
+// ============================================================
+
+// 1. 定义基础列（不可删除，但可隐藏）
+const PRODUCT_BASE_COLS = [
+    { key: 'shop', label: '店铺', type: 'text' },
+    { key: 'country', label: '国家站点', type: 'text' },
+    { key: 'series', label: '系列', type: 'text' },
+    { key: 'parent', label: '父体', type: 'text' },
+    { key: 'msku', label: 'MSKU', type: 'text' },
+    { key: 'factoryModel', label: '工厂型号', type: 'text' },
+    { key: 'deptNo', label: '事业部厂号', type: 'text' },
+    { key: 'productName', label: '产品名称', type: 'text' },
+    { key: 'whSku', label: '海外仓SKU', type: 'text' },
+    { key: 'lsSku', label: '领星SKU', type: 'text' },
+    { key: 'asin', label: 'ASIN', type: 'asin' }, // 特殊类型
+    { key: 'image', label: '产品图片', type: 'image' },
+    { key: 'category', label: '品类', type: 'text' },
+    { key: 'position', label: '产品定位', type: 'text' },
+    { key: 'status', label: '最新状况', type: 'text' }, // 备注: 相关工作
+    { key: 'price', label: '单价', type: 'number' },
+    { key: 'partNo', label: '料号', type: 'text' },
+    { key: 'material', label: '材质', type: 'text' },
+    { key: 'cost', label: '成本', type: 'number' },
+    { key: 'length', label: '长度', type: 'dimension' },
+    { key: 'width', label: '宽度', type: 'dimension' },
+    { key: 'height', label: '高度', type: 'dimension' }
+];
+
+// 2. 状态存储
+const PRODUCT_STORAGE_KEY = 'amazon_product_dashboard_data';
+const PRODUCT_CONFIG_KEY = 'amazon_product_dashboard_config';
+
+let productData = [];
+let productCols = []; // 当前激活的列（包含顺序）
+let productIsInch = false;
+
+// 3. 初始化
+window.onload = function() {
+    product_loadConfig();
+    product_loadData();
+    product_renderForm();
+    product_renderTable();
+};
+
+// ---------- 配置管理（核心） ----------
+function product_loadConfig() {
+    const stored = localStorage.getItem(PRODUCT_CONFIG_KEY);
+    if (stored) {
+        try {
+            productCols = JSON.parse(stored);
+            // 确保所有基础列都在，新增的则追加
+            PRODUCT_BASE_COLS.forEach(base => {
+                if (!productCols.find(c => c.key === base.key)) {
+                    productCols.push({ ...base, visible: true });
+                }
+            });
+        } catch(e) { product_resetConfig(); }
+    } else {
+        product_resetConfig();
+    }
+}
+
+function product_resetConfig() {
+    productCols = PRODUCT_BASE_COLS.map(c => ({ ...c, visible: true }));
+    product_saveConfig();
+}
+
+function product_saveConfig() {
+    localStorage.setItem(PRODUCT_CONFIG_KEY, JSON.stringify(productCols));
+}
+
+// 添加自定义列
+function product_addCustomColumn() {
+    const name = document.getElementById('productNewCustomCol').value.trim();
+    if (!name) { product_showMsg('请输入列名', 'error'); return; }
+    const newKey = 'custom_' + Date.now();
+    productCols.push({ key: newKey, label: name, type: 'text', visible: true, isCustom: true });
+    product_saveConfig();
+    product_renderConfigModal();
+    product_renderForm();
+    product_renderTable();
+    document.getElementById('productNewCustomCol').value = '';
+    product_showMsg('已添加自定义列: ' + name);
+}
+
+// ---------- 数据管理 ----------
+function product_loadData() {
+    const stored = localStorage.getItem(PRODUCT_STORAGE_KEY);
+    if (stored) {
+        try { productData = JSON.parse(stored); } catch(e) { productData = []; }
+    } else {
+        // 示例数据
+        productData = [{
+            shop: 'Amazon US', country: 'US', series: '旗舰', parent: 'P001', msku: 'MSK-01',
+            factoryModel: 'FM-01', deptNo: 'D001', productName: '无线耳机 Pro', whSku: 'WH-01',
+            lsSku: 'LS-01', asin: 'B08XYZ123', image: 'https://via.placeholder.com/50', category: '电子',
+            position: '高端', status: '已上架', price: 89.99, partNo: 'PN-01', material: 'ABS',
+            cost: 25.00, length: 5.2, width: 4.1, height: 2.3
+        }];
+        product_saveData();
+    }
+}
+
+function product_saveData() {
+    localStorage.setItem(PRODUCT_STORAGE_KEY, JSON.stringify(productData));
+}
+
+// ---------- 单位切换 ----------
+function product_toggleUnit() {
+    productIsInch = document.getElementById('productUnitToggle').checked;
+    document.getElementById('productUnitLabel').textContent = productIsInch ? 'INCH' : 'CM';
+    product_renderTable();
+}
+
+// ---------- 渲染表单 ----------
+function product_renderForm() {
+    const container = document.getElementById('productAddForm');
+    container.innerHTML = '';
+    productCols.forEach(col => {
+        if (!col.visible) return;
+        const div = document.createElement('div');
+        div.className = 'form-group';
+        let inputHtml = `<label>${col.label}</label>`;
+        const val = ''; // 新建时为空
+        if (col.type === 'image') {
+            inputHtml += `<input type="text" id="p_add_${col.key}" placeholder="图片URL" value="${val}" />`;
+        } else if (col.type === 'asin') {
+            inputHtml += `<input type="text" id="p_add_${col.key}" placeholder="ASIN码" value="${val}" />`;
+        } else if (col.type === 'dimension') {
+            inputHtml += `<input type="number" step="0.1" id="p_add_${col.key}" placeholder="0.0" value="0" />`;
+        } else {
+            inputHtml += `<input type="text" id="p_add_${col.key}" placeholder="输入${col.label}" value="${val}" />`;
+        }
+        div.innerHTML = inputHtml;
+        container.appendChild(div);
+    });
+}
+
+// 添加/提交产品
+function product_submitAdd() {
+    const newItem = {};
+    let isValid = true;
+    productCols.forEach(col => {
+        if (!col.visible) return;
+        const el = document.getElementById(`p_add_${col.key}`);
+        if (el) {
+            const val = el.value.trim();
+            if (col.type === 'number' || col.type === 'dimension') {
+                newItem[col.key] = parseFloat(val) || 0;
+            } else {
+                newItem[col.key] = val;
+            }
+            if (col.key === 'productName' && !val) { isValid = false; }
+        }
+    });
+    if (!isValid) { product_showMsg('⚠️ 产品名称不能为空', 'error'); return; }
+    if (!newItem.asin) newItem.asin = '-';
+    
+    productData.push(newItem);
+    product_saveData();
+    product_renderTable();
+    product_resetForm();
+    product_showMsg('✅ 产品添加成功！');
+}
+
+function product_resetForm() {
+    productCols.forEach(col => {
+        if (!col.visible) return;
+        const el = document.getElementById(`p_add_${col.key}`);
+        if (el) el.value = (col.type === 'number' || col.type === 'dimension') ? '0' : '';
+    });
+}
+
+// ---------- 渲染表格 ----------
+function product_renderTable() {
+    const thead = document.getElementById('productTableHead');
+    const tbody = document.getElementById('productTableBody');
+    const countEl = document.getElementById('productCount');
+    
+    // 1. 表头
+    const visibleCols = productCols.filter(c => c.visible);
+    thead.innerHTML = `<tr>
+        <th style="width:50px;">#</th>
+        ${visibleCols.map(c => `<th>${c.label}</th>`).join('')}
+        <th style="width:100px;">操作</th>
+    </tr>`;
+
+    // 2. 数据行
+    if (productData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${visibleCols.length + 2}" style="text-align:center;color:#999;">暂无产品，请添加或导入</td></tr>`;
+        countEl.textContent = '(共 0 个)';
+        return;
+    }
+
+    countEl.textContent = `(共 ${productData.length} 个)`;
+    tbody.innerHTML = '';
+    productData.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        let html = `<td style="text-align:center;">${idx + 1}</td>`;
+        visibleCols.forEach(col => {
+            let val = item[col.key] !== undefined ? item[col.key] : '';
+            if (col.type === 'dimension' && productIsInch && typeof val === 'number') {
+                val = (val / 2.54).toFixed(2); // 转英寸
+            }
+            if (col.type === 'asin' && val && val !== '-') {
+                val = `<a href="https://www.amazon.com/dp/${val}" target="_blank" style="color:#2563eb;">${val}</a>`;
+            }
+            if (col.type === 'image' && val) {
+                val = `<img src="${val}" class="img-thumb" onerror="this.style.display='none'" />`;
+            }
+            if (col.type === 'number') {
+                val = val !== '' ? Number(val).toFixed(2) : '';
+            }
+            html += `<td>${val || '-'}</td>`;
+        });
+        html += `<td>
+            <button class="btn-danger" style="padding:4px 8px;font-size:12px;" onclick="product_deleteRecord(${idx})">删除</button>
+        </td>`;
+        tr.innerHTML = html;
+        tbody.appendChild(tr);
+    });
+}
+
+// ---------- 删除 ----------
+function product_deleteRecord(idx) {
+    if (confirm('确定要删除该产品吗？')) {
+        productData.splice(idx, 1);
+        product_saveData();
+        product_renderTable();
+        product_showMsg('已删除', 'success');
+    }
+}
+
+// ---------- 清空 ----------
+function product_clearAll() {
+    if (confirm('⚠️ 确定清空所有产品数据？不可恢复！')) {
+        productData = [];
+        product_saveData();
+        product_renderTable();
+        product_showMsg('已清空', 'success');
+    }
+}
+// ---------- 新增：专门清洗“以文本形式存储的数字” ----------
+function product_parseCleanNumber(str) {
+    if (typeof str !== 'string') {
+        return typeof str === 'number' ? str : 0;
+    }
+    // 去除逗号、货币符号、百分号、空格
+    let cleaned = str.replace(/,/g, '').replace(/[$%¥€]/g, '').trim();
+    let num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+}
+// ---------- 升级版导入函数（整合了数字清洗功能） ----------
+function product_importCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) { product_showMsg('文件为空或格式错误', 'error'); return; }
+
+        const headers = lines[0].split(',').map(h => h.toLowerCase().trim());
+        const dataRows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
+
+        // --- 智能匹配逻辑 ---
+        const aliasMap = {
+            'shop': ['店铺', '站点', 'shop', 'store'],
+            'country': ['国家', '站点', 'country', '区域'],
+            'series': ['系列', '系列名', 'series'],
+            'parent': ['父体', '父级', 'parent', '父sku'],
+            'msku': ['msku', '制造商sku', '厂家sku'],
+            'factoryModel': ['工厂型号', '型号', '工厂', 'model'],
+            'deptNo': ['事业部', '厂号', '部门', 'dept'],
+            'productName': ['产品名', '名称', '产品名称', 'name', '标题'],
+            'whSku': ['海外仓', 'wh', '海外仓sku'],
+            'lsSku': ['领星', '领星sku', 'ls'],
+            'asin': ['asin', 'amazon', '亚马逊'],
+            'image': ['图片', 'image', '图', '照片'],
+            'category': ['品类', '分类', '类别', 'category'],
+            'position': ['定位', '产品定位', 'position'],
+            'status': ['状况', '状态', '备注', '最新状况', 'status'],
+            'price': ['单价', '价格', 'price', '售价'],
+            'partNo': ['料号', '零件号', 'part', '物料号'],
+            'material': ['材质', '材料', '物料', 'material'],
+            'cost': ['成本', 'cost', '进货价'],
+            'length': ['长度', '长', 'length', 'l'],
+            'width': ['宽度', '宽', 'width', 'w'],
+            'height': ['高度', '高', 'height', 'h']
+        };
+
+        let colMapping = {};
+        productCols.forEach(col => {
+            const key = col.key;
+            const aliases = aliasMap[key] || [key, col.label];
+            let matched = null;
+            for (let i = 0; i < headers.length; i++) {
+                const h = headers[i];
+                if (aliases.some(alias => h.includes(alias) || alias.includes(h))) {
+                    matched = i;
+                    break;
+                }
+            }
+            if (matched !== null) colMapping[key] = matched;
+        });
+
+        let addedCount = 0;
+        dataRows.forEach(row => {
+            const newItem = {};
+            Object.keys(colMapping).forEach(key => {
+                const idx = colMapping[key];
+                const val = row[idx] !== undefined ? row[idx] : '';
+                const colDef = productCols.find(c => c.key === key);
+                
+                // 【核心改动】这里调用新增的清洗函数，解决文本型数字问题
+                if (colDef && (colDef.type === 'number' || colDef.type === 'dimension')) {
+                    newItem[key] = product_parseCleanNumber(val);
+                } else {
+                    newItem[key] = String(val).trim();
+                }
+            });
+            
+            productCols.forEach(c => {
+                if (!(c.key in newItem)) {
+                    newItem[c.key] = c.type === 'number' || c.type === 'dimension' ? 0 : '';
+                }
+            });
+            
+            if (newItem.productName || newItem.asin) {
+                productData.push(newItem);
+                addedCount++;
+            }
+        });
+
+        product_saveData();
+        product_renderTable();
+        product_showMsg(`✅ 智能匹配导入成功！共导入 ${addedCount} 条记录`);
+        document.getElementById('productFileInput').value = '';
+    };
+    reader.readAsText(file);
+}
+// ---------- 导出CSV ----------
+function product_exportCSV() {
+    if (productData.length === 0) { product_showMsg('暂无数据导出', 'error'); return; }
+    const visibleCols = productCols.filter(c => c.visible);
+    let csv = visibleCols.map(c => c.label).join(',') + '\n';
+    productData.forEach(item => {
+        const row = visibleCols.map(col => {
+            let val = item[col.key] !== undefined ? item[col.key] : '';
+            if (col.type === 'dimension' && productIsInch && typeof val === 'number') {
+                val = (val / 2.54).toFixed(2);
+            }
+            if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
+                val = `"${val.replace(/"/g, '""')}"`;
+            }
+            return val;
+        });
+        csv += row.join(',') + '\n';
+    });
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `产品数据_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    product_showMsg('✅ 导出成功！');
+}
+
+// ---------- 配置模态框 ----------
+function product_openConfigModal() {
+    document.getElementById('productConfigModal').style.display = 'flex';
+    product_renderConfigModal();
+}
+
+function product_closeConfigModal() {
+    document.getElementById('productConfigModal').style.display = 'none';
+    product_saveConfig();
+    product_renderForm();
+    product_renderTable();
+    product_showMsg('已更新列配置');
+}
+
+function product_renderConfigModal() {
+    const list = document.getElementById('productConfigList');
+    list.innerHTML = '';
+    // 添加拖拽排序功能（这里只做视觉排序，实际使用数组索引）
+    productCols.forEach((col, index) => {
+        const div = document.createElement('div');
+        div.className = 'col-config-item';
+        div.draggable = true;
+        div.dataset.index = index;
+        div.innerHTML = `
+            <input type="checkbox" class="col-check" ${col.visible ? 'checked' : ''} onchange="product_toggleColVisibility('${col.key}', this.checked)" />
+            <span class="col-label">${col.label} ${col.isCustom ? '⭐' : ''}</span>
+            ${col.isCustom ? `<button class="btn-danger" style="padding:2px 8px;font-size:12px;" onclick="product_removeCustomCol('${col.key}')">删除</button>` : ''}
+            <span class="col-drag">⠿</span>
+        `;
+        // 拖拽事件
+        div.addEventListener('dragstart', function(e) { e.dataTransfer.setData('text/plain', this.dataset.index); });
+        div.addEventListener('dragover', function(e) { e.preventDefault(); });
+        div.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+            const toIdx = parseInt(this.dataset.index);
+            if (fromIdx !== toIdx) {
+                const item = productCols.splice(fromIdx, 1)[0];
+                productCols.splice(toIdx, 0, item);
+                product_saveConfig();
+                product_renderConfigModal();
+            }
+        });
+        list.appendChild(div);
+    });
+}
+
+function product_toggleColVisibility(key, checked) {
+    const col = productCols.find(c => c.key === key);
+    if (col) { col.visible = checked; product_saveConfig(); }
+}
+
+function product_removeCustomCol(key) {
+    if (confirm('确定删除此自定义列吗？数据将保留但不再显示')) {
+        productCols = productCols.filter(c => c.key !== key);
+        product_saveConfig();
+        product_renderConfigModal();
+        product_renderForm();
+        product_renderTable();
+    }
+}
+
+// ---------- 消息工具 ----------
+function product_showMsg(text, type = 'success') {
+    const el = document.getElementById('productMsg');
+    el.textContent = text;
+    el.className = 'msg ' + (type === 'success' ? 'msg-success' : 'msg-error');
+    setTimeout(() => { el.className = 'msg'; }, 4000);
+}
+</script>
+</body>
+</html>
