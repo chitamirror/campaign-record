@@ -265,8 +265,35 @@
         const file = e.target.files[0]; if(!file) return;
         const r = new FileReader();
         r.onload = function(ev) {
-            const text = ev.target.result;
-            const lines = text.split(/\r?\n/).filter(l => l.trim());
+                        const text = ev.target.result;
+            // 高级 CSV 解析器：能正确识别双引号包住的换行符
+            let rows = [];
+            let currentRow = [];
+            let currentField = '';
+            let insideQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                if (char === '"') {
+                    if (text[i+1] === '"') { currentField += '"'; i++; }
+                    else { insideQuotes = !insideQuotes; }
+                } else if (char === ',' && !insideQuotes) {
+                    currentRow.push(currentField.trim());
+                    currentField = '';
+                } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+                    if (char === '\r' && text[i+1] === '\n') i++;
+                    currentRow.push(currentField.trim());
+                    if (currentRow.some(f => f !== '')) rows.push(currentRow);
+                    currentRow = [];
+                    currentField = '';
+                } else {
+                    currentField += char;
+                }
+            }
+            if (currentField !== '' || currentRow.length > 0) {
+                currentRow.push(currentField.trim());
+                if (currentRow.some(f => f !== '')) rows.push(currentRow);
+            }
+            const lines = rows; // 替换为高级解析后的数组
             if(lines.length < 2) return p_msg('文件格式错误或内容为空', 'error');
             const heads = lines[0].split(',').map(h => h.toLowerCase().trim());
             const dataRows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
