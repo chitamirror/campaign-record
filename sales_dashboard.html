@@ -322,7 +322,93 @@
     }
     function p_delete(idx) { if(confirm('确认删除？')){ pData.splice(idx,1); p_saveData(); p_render(); p_msg('已删除'); } }
     function p_clearAll() { if(confirm('⚠️ 确认清空全部？')){ pData=[]; p_saveData(); p_render(); p_msg('已清空'); } }
-    function p_importCSV(e) { /* ... CS V导入逻辑省略，与原版本一致... */ }
+    function p_importCSV(e) {
+        const file = e.target.files[0]; if(!file) return;
+        const r = new FileReader();
+        r.onload = function(ev) {
+            const text = ev.target.result;
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            if(lines.length < 2) return p_msg('文件格式错误或内容为空', 'error');
+            
+            const heads = lines[0].split(',').map(h => h.toLowerCase().trim());
+            const dataRows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
+            
+            // 中文别名映射（兼容你CSV里的各种表头）
+            const aliasMap = {
+                'shop': ['店铺', '站点', 'shop', 'store'],
+                'country': ['国家', '站点', 'country', '区域'],
+                'series': ['系列', 'series'],
+                'parent': ['父体', 'parent'],
+                'msku': ['msku', '制造商sku'],
+                'factoryModel': ['工厂型号', '型号', 'factorymodel'],
+                'deptNo': ['事业部', '厂号', 'deptno'],
+                'productName': ['产品名称', '产品名', '名称', 'productname'],
+                'whSku': ['海外仓', 'whsku'],
+                'lsSku': ['领星', 'lssku'],
+                'asin': ['asin', '亚马逊'],
+                'image': ['图片', 'image'],
+                'category': ['品类', '分类', 'category'],
+                'position': ['产品定位', '定位', 'position'],
+                'status': ['最新状况', '状况', '状态', 'status'],
+                'price': ['单价', '价格', 'price'],
+                'partNo': ['料号', 'partno'],
+                'material': ['材质', '材料', 'material'],
+                'cost': ['成本', 'cost'],
+                'length': ['长度', 'length'],
+                'width': ['宽度', 'width'],
+                'height': ['高度', 'height'],
+                // 你截图里新增的自定义列
+                'owner': ['负责人', 'owner']
+            };
+            
+            // 智能匹配列
+            let colMapping = {};
+            pCols.forEach(col => {
+                const key = col.key;
+                const aliases = aliasMap[key] || [key, col.label];
+                let matched = -1;
+                for(let i=0; i<headers.length; i++) {
+                    if(aliases.some(alias => heads[i].includes(alias) || alias.includes(heads[i]))) {
+                        matched = i; break;
+                    }
+                }
+                if(matched !== -1) colMapping[key] = matched;
+            });
+
+            let addedCount = 0;
+            dataRows.forEach(row => {
+                const item = {};
+                let hasValidKey = false;
+                Object.keys(colMapping).forEach(key => {
+                    const idx = colMapping[key];
+                    const val = row[idx] !== undefined ? row[idx] : '';
+                    const colDef = pCols.find(c => c.key === key);
+                    if (colDef && (colDef.type === 'number' || colDef.type === 'dimension')) {
+                        item[key] = parseFloat(String(val).replace(/,/g,'')) || 0;
+                    } else {
+                        item[key] = String(val).trim();
+                    }
+                });
+                
+                // 只要CSV里有【ASIN】或者【产品名称】的数据，就视为有效记录，强制导入
+                if(item.asin || item.productName) hasValidKey = true;
+                
+                if(hasValidKey) {
+                    pCols.forEach(c => { if(!(c.key in item)) item[c.key] = c.type==='number'?0:''; });
+                    if(!item.asin) item.asin = '-'; // 没有ASIN防报错
+                    pData.push(item);
+                    addedCount++;
+                }
+            });
+            
+            if(addedCount === 0) return p_msg('⚠️ 没有匹配到有效数据，请检查CSV首行列名是否包含"ASIN"或"产品名称"', 'error');
+            
+            p_saveData(); p_render(); p_msg(`✅ 成功导入 ${addedCount} 条产品记录！`);
+            document.getElementById('pFile').value = '';
+        };
+        r.readAsText(file);
+    }
+    
     function p_exportCSV() { /* ... 导出逻辑省略，与原版本一致... */ }
     function p_openConfig() { document.getElementById('pConfigModal').style.display='flex'; const list = document.getElementById('pConfigList'); list.innerHTML = ''; pCols.forEach(c=>{ const d=document.createElement('div'); d.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fafafa;'; d.innerHTML=`<input type="checkbox" ${c.visible?'checked':''} onchange="p_toggleVis('${c.key}',this.checked)" /><span>${c.label}</span>`; list.appendChild(d); }); }
     function p_closeConfig() { document.getElementById('pConfigModal').style.display='none'; p_saveConfig(); p_renderForm(); p_render(); }
