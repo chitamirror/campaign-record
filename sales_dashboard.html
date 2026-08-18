@@ -295,8 +295,8 @@
             }
             const lines = rows; // 替换为高级解析后的数组
             if(lines.length < 2) return p_msg('文件格式错误或内容为空', 'error');
-            const heads = lines[0].split(',').map(h => h.toLowerCase().trim());
-            const dataRows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
+            const heads = lines[0].map(h => h.toLowerCase().trim());
+            const dataRows = lines.slice(1);
             const aliasMap = {'shop':['店铺','站点','shop'],'country':['国家','站点','country'],'series':['系列','series'],'parent':['父体','parent'],'msku':['msku'],'factoryModel':['工厂型号','型号','factorymodel'],'deptNo':['事业部','厂号','deptno'],'productName':['产品名称','产品名','名称','productname'],'whSku':['海外仓','whsku'],'lsSku':['领星','lssku'],'asin':['asin','亚马逊'],'image':['图片','image'],'category':['品类','分类','category'],'position':['产品定位','定位','position'],'status':['最新状况','状况','状态','status'],'price':['单价','价格','price'],'partNo':['料号','partno'],'material':['材质','材料','material'],'cost':['成本','cost'],'length':['长度','length'],'width':['宽度','width'],'height':['高度','height'],'owner':['负责人','owner']};
             let colMapping = {};
             pCols.forEach(col => {
