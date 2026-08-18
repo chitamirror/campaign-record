@@ -3,15 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>每日监控与库存看板 </title>
+    <title>亚马逊运营看板系统</title>
     <style>
-        /* 全局基础样式 */
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; padding: 20px; }
-        .dashboard-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        /* ======================== 全局基础样式 ======================== */
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
+        
+        /* ======================== 顶部导航栏 ======================== */
+        .app-header { background: #1e293b; color: #fff; height: 56px; display: flex; align-items: center; padding: 0 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .app-logo { font-weight: 700; font-size: 16px; margin-right: 30px; display: flex; align-items: center; gap: 8px; }
+        .nav-menu { display: flex; height: 100%; gap: 4px; }
+        .nav-btn { background: transparent; color: #94a3b8; border: none; padding: 0 24px; cursor: pointer; font-size: 14px; transition: 0.2s; height: 100%; }
+        .nav-btn:hover { color: #fff; background: #334155; }
+        .nav-btn.active { color: #fff; background: #0f172a; font-weight: 600; }
+
+        /* ======================== 核心内容区 ======================== */
+        .main-content { padding: 20px; max-width: 1600px; margin: 0 auto; }
+        .dashboard-panel { display: none; }
+        .dashboard-panel.active { display: block; }
+
+        /* ======================== 组件复用样式 ======================== */
+        .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .flex-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
         .form-group { display: flex; flex-direction: column; gap: 5px; }
-        input, select, textarea { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; }
-        button { padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        input, select, textarea { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 100%; outline: none; }
+        input:focus { border-color: #2563eb; }
+        button { padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
         button:hover { background: #1d4ed8; }
         .btn-danger { background: #dc2626; }
         .btn-danger:hover { background: #b91c1c; }
@@ -19,531 +36,568 @@
         .btn-secondary:hover { background: #4b5563; }
         .btn-green { background: #059669; }
         .btn-green:hover { background: #047857; }
+        
         .msg { margin-top: 10px; padding: 10px; border-radius: 6px; display: none; }
         .msg-success { background: #dcfce7; color: #166534; display: block; }
         .msg-error { background: #fee2e2; color: #991b1b; display: block; }
-        
-        /* 表格与滚动 */
-        .table-wrap { overflow-x: auto; max-height: 500px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 10px; }
+
+        .table-wrap { overflow-x: auto; max-height: 520px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-top: 10px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th { background: #f8fafc; padding: 10px; border-bottom: 2px solid #e2e8f0; text-align: left; position: sticky; top: 0; z-index: 10; }
         td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-        
-        /* 配置模态框 */
+        .img-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid #e2e8f0; }
+
+        /* ======================== 模态框 ======================== */
         .modal-overlay { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:999; }
-        .modal-content { background:#fff; border-radius:16px; padding:30px; width:90%; max-width:900px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
-        .modal-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:15px; margin-bottom:20px; }
-        #dailyConfigList, #invConfigList { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
-        .col-config-item { display:flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; background:#fafafa; cursor:grab; }
-        .col-config-item:hover { background:#f1f5f9; }
-        
-        /* 控制栏 */
-        .control-bar { display: flex; gap:15px; flex-wrap:wrap; align-items:center; }
-        .control-bar select, .control-bar input { width: auto; min-width: 120px; }
-        @media (max-width: 600px) { .control-bar { flex-direction: column; } .modal-content { width:95%; padding:15px; } }
-        
-        /* 选项卡样式 */
-        .tab-container { display: flex; gap: 20px; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px; padding-bottom: 5px; }
-        .tab-btn { background: transparent; border: none; padding: 12px 20px; font-size: 15px; font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
-        .tab-btn:hover { color: #2563eb; }
-        .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; }
-        .tab-panel { display: none; }
-        .tab-panel.active { display: block; }
+        .modal-content { background:#fff; border-radius:16px; padding:25px; width:90%; max-width:880px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+        .modal-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:15px; margin-bottom:15px; }
+        .modal-header h3 { margin:0; }
+
+        /* ======================== 配置面板 ======================== */
+        .col-config-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+        .col-config-item { display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; background:#fafafa; }
+
+        @media (max-width: 600px) { .flex-row { flex-direction: column; } }
     </style>
 </head>
 <body>
 
-<div id="dailyDashboard">
-    <h2 style="margin-top:0;">📊 每日监控与库存看板</h2>
-    <div id="dailyMsg" class="msg"></div>
+    <!-- ================== 顶部横向导航栏 ================== -->
+    <div class="app-header">
+        <div class="app-logo">📊 运营系统</div>
+        <div class="nav-menu">
+            <button class="nav-btn active" onclick="switchPanel('products')">📦 产品管理</button>
+            <button class="nav-btn" onclick="switchPanel('daily')">📈 每日监控与库存</button>
+        </div>
+    </div>
 
-    <!-- ==================== 1. 全局工具控制栏 ==================== -->
-    <div class="dashboard-card">
-        <div class="control-bar">
-            <div class="form-group" style="flex:1;">
-                <label>📅 数据周期</label>
-                <div style="display:flex; gap:10px;">
-                    <input type="date" id="dailyStartDate" />
-                    <span style="line-height:40px;">至</span>
-                    <input type="date" id="dailyEndDate" />
+    <!-- ================== 主内容区 ================== -->
+    <div class="main-content">
+
+        <!-- 【面板 1：产品管理】 -->
+        <div id="panel-products" class="dashboard-panel active">
+            <div id="productDashboard">
+                <h2 style="margin-top:0;">📦 产品管理看板</h2>
+                <div id="productMsg" class="msg"></div>
+                <!-- 功能：工具栏 -->
+                <div class="card">
+                    <div class="flex-row" style="justify-content:space-between;">
+                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                            <button onclick="p_openConfig()">⚙️ 自定义列</button>
+                            <button onclick="document.getElementById('pFile').click()" class="btn-green">📁 导入CSV</button>
+                            <button onclick="p_exportCSV()" style="background:#0d9488;">📤 导出</button>
+                            <button onclick="p_clearAll()" class="btn-danger">🗑️ 清空</button>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:15px;">
+                            <label><input type="checkbox" id="pUnitToggle" onchange="p_toggleUnit()"> <span id="pUnitLabel">CM</span></label>
+                        </div>
+                    </div>
+                    <input type="file" id="pFile" accept=".csv" style="display:none;" onchange="p_importCSV(event)" />
+                </div>
+                <!-- 功能：手动添加 -->
+                <div class="card">
+                    <h3>➕ 手动添加产品</h3>
+                    <div class="flex-row" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap:12px;">
+                        <div id="pAddForm" style="display:contents;"></div>
+                        <div style="grid-column:1/-1; display:flex; gap:10px; margin-top:5px;">
+                            <button onclick="p_submitAdd()">💾 添加产品</button>
+                            <button onclick="p_resetForm()" class="btn-secondary">重置</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- 功能：数据表格 -->
+                <div class="card">
+                    <h3>📋 产品列表 <span id="pCount" style="font-size:14px;font-weight:normal;color:#6b7280;"></span></h3>
+                    <div class="table-wrap">
+                        <table><thead id="pHead"></thead><tbody id="pBody"></tbody></table>
+                    </div>
                 </div>
             </div>
-            <div class="form-group" style="flex:1;">
-                <label>📊 聚合维度 / 筛选</label>
-                <div style="display:flex; gap:10px;">
-                    <select id="dailyDimension" onchange="daily_renderAll()">
-                        <option value="asin">按 ASIN 展示</option>
-                        <option value="model">按 型号 聚合</option>
-                        <option value="series">按 系列 聚合</option>
-                    </select>
-                    <input type="text" id="dailyFilterItems" placeholder="多选加和 (如: ASIN1, ASIN2)" style="flex:1; min-width:200px;" />
+        </div>
+
+        <!-- 【面板 2：每日监控】 -->
+        <div id="panel-daily" class="dashboard-panel">
+            <div id="dailyDashboard">
+                <h2 style="margin-top:0;">📈 每日监控与库存看板</h2>
+                <div id="dailyMsg" class="msg"></div>
+                <!-- 功能：工具栏 -->
+                <div class="card">
+                    <div class="flex-row">
+                        <div class="form-group" style="flex:1;"><label>📅 周期</label><div style="display:flex;gap:10px;"><input type="date" id="dStart" /><span style="line-height:40px;">至</span><input type="date" id="dEnd" /></div></div>
+                        <div class="form-group" style="flex:1;"><label>📊 聚合维度</label><div style="display:flex;gap:10px;"><select id="dDimension" onchange="d_renderAll()"><option value="asin">按 ASIN</option><option value="model">按 型号</option><option value="series">按 系列</option></select><input type="text" id="dFilter" placeholder="ASIN1, ASIN2" style="flex:1;min-width:150px;" oninput="d_renderAll()" /></div></div>
+                        <div style="display:flex; gap:10px; align-self:flex-end;">
+                            <button onclick="d_openConfig()">⚙️ 列</button>
+                            <button onclick="document.getElementById('dFile').click()" class="btn-green">📁 导入</button>
+                            <button onclick="d_exportCSV()" style="background:#0d9488;">📤 导出</button>
+                            <button onclick="d_clearAll()" class="btn-danger">🗑️ 清空</button>
+                        </div>
+                        <input type="file" id="dFile" accept=".csv" style="display:none;" onchange="d_importCSV(event)" />
+                    </div>
+                </div>
+                <!-- 功能：手动添加 -->
+                <div class="card">
+                    <div class="flex-row" style="justify-content:space-between;">
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="d_openAdd('sales')">➕ 添日销</button>
+                            <button onclick="d_openAdd('inventory')" class="btn-green">➕ 添库存</button>
+                        </div>
+                    </div>
+                    <div class="table-wrap">
+                        <table><thead id="dHead"></thead><tbody id="dBody"></tbody></table>
+                    </div>
                 </div>
             </div>
-            <div style="display:flex; gap:10px; align-self:flex-end; flex-wrap:wrap;">
-                <button onclick="daily_openConfigModal()">⚙️ 配置列</button>
-                <button onclick="document.getElementById('dailyFileInput').click()" class="btn-green">📁 导入数据</button>
-                <button onclick="daily_exportCSV()" style="background:#0d9488;">📤 导出</button>
-                <button onclick="daily_clearAll()" class="btn-danger">🗑️ 清空</button>
-            </div>
-            <input type="file" id="dailyFileInput" accept=".csv" style="display:none;" onchange="daily_importCSV(event)" />
         </div>
     </div>
 
-    <!-- ==================== 2. 顶部选项卡导航 ==================== -->
-    <div class="tab-container">
-        <button class="tab-btn active" id="tabSalesBtn" onclick="daily_switchTab('sales')">📈 日销售与活动监控</button>
-        <button class="tab-btn" id="tabInvBtn" onclick="daily_switchTab('inventory')">📦 库存与动销健康</button>
-    </div>
+    <!-- ======================== 模态框区 ======================== -->
+    <!-- 产品：配置列 -->
+    <div id="pConfigModal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h3>⚙️ 配置产品列</h3><button onclick="p_closeConfig()" style="background:transparent;font-size:24px;">&times;</button></div><div id="pConfigList" class="col-config-list"></div><div style="margin-top:15px;text-align:right;"><button onclick="p_closeConfig()" class="btn-secondary">关闭生效</button></div></div></div>
+    <!-- 产品：编辑 -->
+    <div id="pEditModal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h3>✏️ 编辑产品</h3><button onclick="p_closeEdit()" style="background:transparent;font-size:24px;">&times;</button></div><div id="pEditForm" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:15px 0;"></div><div style="text-align:right;"><button onclick="p_closeEdit()" class="btn-secondary">取消</button><button onclick="p_saveEdit()" style="background:#059669;margin-left:10px;">💾 保存</button></div></div></div>
 
-    <!-- ==================== 3. 板块一：日销售与活动监控 ==================== -->
-    <div id="tabPanelSales" class="dashboard-card tab-panel active">
-        <div class="flex-row" style="margin-bottom:15px; justify-content:space-between;">
-            <div style="display:flex; gap:10px;">
-                <button onclick="daily_openAddModal('sales')" style="background:#2563eb;">➕ 手动添加日销售</button>
-            </div>
-        </div>
-        <div class="table-wrap">
-            <table>
-                <thead id="dailyTableHead"><tr></tr></thead>
-                <tbody id="dailyTableBody"></tbody>
-            </table>
-        </div>
-    </div>
+    <!-- 每日：配置列 -->
+    <div id="dConfigModal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h3>⚙️ 配置每日列</h3><button onclick="d_closeConfig()" style="background:transparent;font-size:24px;">&times;</button></div><div id="dConfigList" class="col-config-list"></div><div style="margin-top:15px;text-align:right;"><button onclick="d_closeConfig()" class="btn-secondary">关闭生效</button></div></div></div>
+    <!-- 每日：添加/编辑 -->
+    <div id="dAddEditModal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><h3 id="dModalTitle">✏️ 数据</h3><button onclick="d_closeAddEdit()" style="background:transparent;font-size:24px;">&times;</button></div><div id="dAddEditForm" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:15px 0;"></div><div style="text-align:right;"><button onclick="d_closeAddEdit()" class="btn-secondary">取消</button><button onclick="d_saveAddEdit()" style="background:#059669;margin-left:10px;">💾 保存</button></div></div></div>
 
-    <!-- ==================== 4. 板块二：库存与动销健康 ==================== -->
-    <div id="tabPanelInv" class="dashboard-card tab-panel">
-        <div class="flex-row" style="margin-bottom:15px; justify-content:space-between;">
-            <div style="display:flex; gap:10px;">
-                <button onclick="daily_openAddModal('inventory')" style="background:#059669;">➕ 手动添加/更新库存</button>
-            </div>
-        </div>
-        <div class="table-wrap">
-            <table>
-                <thead id="invTableHead"><tr></tr></thead>
-                <tbody id="invTableBody"></tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- ==================== 模态框区 ==================== -->
-
-<!-- 配置列模态框 -->
-<div id="dailyConfigModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header"><h3 style="margin:0;">⚙️ 配置显示列</h3><button onclick="daily_closeConfigModal()" style="background:transparent;color:#6b7280;font-size:24px;">&times;</button></div>
-        <p style="color:#6b7280;font-size:14px;">下方勾选/取消控制销售板块显示。</p>
-        <div id="dailyConfigList"></div>
-        <div style="margin:20px 0; border-top:1px dashed #d1d5db;"></div>
-        <p style="color:#6b7280;font-size:14px;">下方勾选/取消控制库存板块显示。</p>
-        <div id="invConfigList"></div>
-        <div style="margin-top:15px; text-align:right;"><button onclick="daily_closeConfigModal()" class="btn-secondary">关闭并生效</button></div>
-    </div>
-</div>
-
-<!-- 手动添加/编辑数据模态框 -->
-<div id="dailyAddEditModal" class="modal-overlay">
-    <div class="modal-content">
-        <div class="modal-header"><h3 style="margin:0;" id="dailyModalTitle">✏️ 编辑/添加数据</h3><button onclick="daily_closeAddEditModal()" style="background:transparent;color:#6b7280;font-size:24px;">&times;</button></div>
-        <div id="dailyAddEditForm" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap:15px; margin:15px 0;"></div>
-        <div style="text-align:right; border-top:1px solid #e2e8f0; padding-top:15px;">
-            <button onclick="daily_closeAddEditModal()" class="btn-secondary" style="margin-right:10px;">取消</button>
-            <button onclick="daily_saveAddEdit()" style="background:#059669;">💾 保存数据</button>
-        </div>
-    </div>
-</div>
-
-<script>
-// ============================================================
-// 核心逻辑 (与产品看板联动版)
-// ============================================================
-
-// 1. 独立列定义
-const DAILY_SALES_COLS = [
-    { key: 'date', label: '日期', type: 'date' },
-    { key: 'sku', label: 'ASIN/SKU', type: 'text' },
-    { key: 'totalSales', label: '总销量', type: 'number' },
-    { key: 'revenue', label: '销售额 ($)', type: 'number' },
-    { key: 'amzPrice', label: 'Amz售价', type: 'number' },
-    { key: 'startDate', label: '活动开始', type: 'date' },
-    { key: 'discount', label: '活动折扣(%)', type: 'number' },
-    { key: 'shouldPrice', label: '应显示价', type: 'number' },
-    { key: 'actualPrice', label: '实际显示价', type: 'number' },
-    { key: 'reviews', label: '评论数', type: 'number' },
-    { key: 'rating', label: '评分', type: 'number' },
-    { key: 'bsr', label: '大类排名', type: 'number' },
-    { key: 'subBsr', label: '小类排名', type: 'number' },
-    { key: 'adSpSpend', label: '广告(SP)花费', type: 'number' },
-    { key: 'adSbvSpend', label: '广告(SBV)花费', type: 'number' },
-    { key: 'adTotalSpend', label: '广告总花费', type: 'number' },
-    { key: 'adSales', label: '广告销量', type: 'number' },
-    { key: 'natSales', label: '自然销量', type: 'number' },
-    { key: 'returnQty', label: '退货数量', type: 'number' },
-    { key: 'acos', label: 'ACOS (%)', type: 'number' },
-];
-
-const INVENTORY_COLS = [
-    { key: 'sku', label: 'ASIN/SKU', type: 'text' },
-    { key: 'vcStock', label: '厂内库存 (VC)', type: 'number' },
-    { key: 'transitStock', label: '在途库存', type: 'number' },
-    { key: 'qy_LA', label: '千亚 LA', type: 'number' },
-    { key: 'qy_TX', label: '千亚 TX', type: 'number' },
-    { key: 'qy_GA', label: '千亚 GA', type: 'number' },
-    { key: 'qy_PA', label: '千亚 PA', type: 'number' },
-    { key: 'gc_Houston', label: '谷仓 休斯顿', type: 'number' },
-    { key: 'gc_Atlanta', label: '谷仓 亚特兰大', type: 'number' },
-    { key: 'gc_CA', label: '谷仓 加州', type: 'number' },
-    { key: 'gc_NJ', label: '谷仓 新泽西', type: 'number' },
-    { key: 'stockAge', label: '库龄 (天)', type: 'number' },
-    { key: 'monthlyForecast', label: '月销预估', type: 'number' },
-    { key: 'sellThrough', label: '动销比 (月)', type: 'number' },
-];
-
-const DAILY_STORAGE_KEY = 'amazon_all_data_key'; // 共用数据池
-const DAILY_SALES_CONFIG_KEY = 'amazon_sales_config';
-const INV_CONFIG_KEY = 'amazon_inv_config';
-
-let dailyData = [];            // 数据池：同时存销售和库存字段
-let dailySalesCols = [];
-let invCols = [];
-let dailyEditIdx = null;
-let dailyEditType = 'sales';
-
-// 2. 初始化
-window.onload = function() {
-    daily_loadConfig();
-    daily_loadData();
-    daily_setDefaultDate();
-    daily_renderAll();
-};
-
-// ---------- 数据与配置加载 ----------
-function daily_loadConfig() {
-    const salesStored = localStorage.getItem(DAILY_SALES_CONFIG_KEY);
-    dailySalesCols = salesStored ? JSON.parse(salesStored) : DAILY_SALES_COLS.map(c => ({...c, visible: true}));
-    const invStored = localStorage.getItem(INV_CONFIG_KEY);
-    invCols = invStored ? JSON.parse(invStored) : INVENTORY_COLS.map(c => ({...c, visible: true}));
-}
-function daily_saveConfig() {
-    localStorage.setItem(DAILY_SALES_CONFIG_KEY, JSON.stringify(dailySalesCols));
-    localStorage.setItem(INV_CONFIG_KEY, JSON.stringify(invCols));
-}
-function daily_loadData() {
-    const stored = localStorage.getItem(DAILY_STORAGE_KEY);
-    if (stored) { dailyData = JSON.parse(stored); } 
-    else {
-        // 添加一条涵盖销售+库存的示例
-        dailyData = [{
-            date: '2026-08-01', sku: 'B08TEST01',
-            totalSales: 15, revenue: 749.85, amzPrice: 49.99,
-            startDate: '2026-08-01', discount: 20, shouldPrice: 39.99, actualPrice: 39.99,
-            reviews: 1250, rating: 4.7, bsr: 5432, subBsr: 321,
-            adSpSpend: 50.00, adSbvSpend: 10.00, adTotalSpend: 60.00, adSales: 5, natSales: 10,
-            returnQty: 1,
-            vcStock: 200, transitStock: 150,
-            qy_LA: 100, qy_TX: 50, qy_GA: 20, qy_PA: 30,
-            gc_Houston: 40, gc_Atlanta: 10, gc_CA: 60, gc_NJ: 20,
-            stockAge: 45
-        }];
-        daily_saveData();
+    <!-- ======================== 核心逻辑脚本区 ======================== -->
+    <script>
+    // ================================================================
+    // 1. 全局面板切换逻辑 (点击顶部导航触发)
+    // ================================================================
+    function switchPanel(id) {
+        document.querySelectorAll('.dashboard-panel').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById('panel-' + id).classList.add('active');
+        document.querySelector('.nav-btn[onclick*="' + id + '"]').classList.add('active');
+        
+        // 切到每日面板时，如果数据已加载，重新渲染一下（确保表格宽度适应）
+        if(id === 'daily' && typeof d_renderAll === 'function') d_renderAll();
     }
-}
-function daily_saveData() { localStorage.setItem(DAILY_STORAGE_KEY, JSON.stringify(dailyData)); }
 
-// ---------- 【联动核心】从产品看板获取映射 ----------
-function daily_fetchMasterMappings() {
-    const masterData = localStorage.getItem('amazon_product_dashboard_data');
-    if (masterData) {
-        try {
-            const products = JSON.parse(masterData);
-            let mapObj = {};
-            products.forEach(p => {
-                // 兼容产品看板的字段结构
-                const sku = p.asin || p.sku;
-                if (sku) {
-                    mapObj[sku] = { model: p.model || '', series: p.series || '' };
-                }
+    // ================================================================
+    // 2. 产品看板模块 (前缀: p_)
+    // ================================================================
+    const P_COLS_DEF = [
+        {key:'shop',label:'店铺',type:'text'},{key:'country',label:'国家',type:'text'},
+        {key:'series',label:'系列',type:'text'},{key:'parent',label:'父体',type:'text'},
+        {key:'msku',label:'MSKU',type:'text'},{key:'factoryModel',label:'工厂型号',type:'text'},
+        {key:'deptNo',label:'事业部号',type:'text'},{key:'productName',label:'产品名称',type:'text'},
+        {key:'asin',label:'ASIN',type:'asin'},{key:'image',label:'图片',type:'image'},
+        {key:'price',label:'单价',type:'number'},{key:'cost',label:'成本',type:'number'},
+        {key:'length',label:'长度',type:'dimension'},{key:'width',label:'宽度',type:'dimension'},{key:'height',label:'高度',type:'dimension'}
+    ];
+    const P_STORAGE = 'amazon_product_dashboard_data';
+    const P_CONFIG = 'amazon_product_dashboard_config';
+    let pData=[], pCols=[], pEditIdx=null, pIsInch=false;
+
+    function p_loadConfig() {
+        const s = localStorage.getItem(P_CONFIG);
+        pCols = s ? JSON.parse(s) : P_COLS_DEF.map(c=>({...c, visible:true}));
+    }
+    function p_saveConfig() { localStorage.setItem(P_CONFIG, JSON.stringify(pCols)); }
+
+    function p_loadData() {
+        const s = localStorage.getItem(P_STORAGE);
+        if(s) pData = JSON.parse(s);
+        else {
+            pData = [{ shop:'Amazon US', country:'US', series:'旗舰', parent:'P001', msku:'MSK-01', factoryModel:'FM-01', deptNo:'D001', productName:'无线耳机Pro', asin:'B08XYZ123', image:'https://via.placeholder.com/48', price:89.99, cost:25.00, length:5.2, width:4.1, height:2.3 }];
+            p_saveData();
+        }
+    }
+    function p_saveData() { localStorage.setItem(P_STORAGE, JSON.stringify(pData)); }
+
+    function p_msg(t, type='success') {
+        const el = document.getElementById('productMsg');
+        el.textContent = t; el.className = 'msg ' + (type==='success'?'msg-success':'msg-error');
+        setTimeout(()=>el.className='msg', 4000);
+    }
+
+    function p_toggleUnit() {
+        pIsInch = document.getElementById('pUnitToggle').checked;
+        document.getElementById('pUnitLabel').textContent = pIsInch ? 'INCH' : 'CM';
+        p_render();
+    }
+
+    function p_renderForm() {
+        const c = document.getElementById('pAddForm'); c.innerHTML = '';
+        pCols.forEach(col => {
+            if(!col.visible) return;
+            const d = document.createElement('div'); d.className = 'form-group';
+            d.innerHTML = `<label>${col.label}</label><input type="${col.type==='number'||col.type==='dimension'?'number':'text'}" id="p_add_${col.key}" step="0.1" />`;
+            c.appendChild(d);
+        });
+    }
+
+    function p_submitAdd() {
+        const item = {};
+        let valid = true;
+        pCols.forEach(col => {
+            if(!col.visible) return;
+            const el = document.getElementById(`p_add_${col.key}`);
+            if(el) {
+                const v = el.value.trim();
+                if(col.type==='number'||col.type==='dimension') item[col.key] = parseFloat(v)||0;
+                else item[col.key] = v;
+                if(col.key==='productName' && !v) valid = false;
+            }
+        });
+        if(!valid) return p_msg('⚠️ 产品名称不能为空', 'error');
+        pData.push(item); p_saveData(); p_render(); p_resetForm(); p_msg('✅ 添加成功');
+    }
+    function p_resetForm() {
+        pCols.forEach(col => {
+            const el = document.getElementById(`p_add_${col.key}`);
+            if(el) el.value = (col.type==='number'||col.type==='dimension') ? '0' : '';
+        });
+    }
+
+    function p_render() {
+        const thead = document.getElementById('pHead'), tbody = document.getElementById('pBody'), cnt = document.getElementById('pCount');
+        const vis = pCols.filter(c=>c.visible);
+        thead.innerHTML = `<tr><th style="width:40px;">#</th>${vis.map(c=>`<th>${c.label}</th>`).join('')}<th style="width:120px;">操作</th></tr>`;
+        if(!pData.length) { tbody.innerHTML=`<tr><td colspan="${vis.length+2}" style="text-align:center;color:#999;">暂无</td></tr>`; cnt.textContent=''; return; }
+        cnt.textContent = `(共 ${pData.length} 个)`;
+        tbody.innerHTML = '';
+        pData.forEach((item, idx) => {
+            let html = `<td>${idx+1}</td>`;
+            vis.forEach(col => {
+                let val = item[col.key] || '';
+                if(col.type==='dimension' && pIsInch && typeof val==='number') val = (val/2.54).toFixed(2);
+                if(col.type==='asin' && val) val = `<a href="https://www.amazon.com/dp/${val}" target="_blank" style="color:#2563eb;">${val}</a>`;
+                if(col.type==='image' && val) val = `<img src="${val}" class="img-thumb" onerror="this.style.display='none'" />`;
+                if(typeof val === 'number') val = val.toFixed(2);
+                html += `<td>${val||'-'}</td>`;
             });
-            return mapObj;
+            html += `<td><button style="background:#2563eb;padding:4px 10px;font-size:12px;" onclick="p_openEdit(${idx})">✏️</button> <button class="btn-danger" style="padding:4px 10px;font-size:12px;" onclick="p_delete(${idx})">🗑️</button></td>`;
+            tbody.innerHTML += `<tr>${html}</tr>`;
+        });
+    }
+
+    function p_delete(idx) { if(confirm('确认删除？')){ pData.splice(idx,1); p_saveData(); p_render(); p_msg('已删除'); } }
+    function p_clearAll() { if(confirm('⚠️ 确认清空全部？')){ pData=[]; p_saveData(); p_render(); p_msg('已清空'); } }
+
+    // 产品：导入/导出 (CSV)
+    function p_importCSV(e) {
+        const file = e.target.files[0]; if(!file) return;
+        const r = new FileReader();
+        r.onload = function(ev) {
+            const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+            if(lines.length<2) return p_msg('格式错误', 'error');
+            const heads = lines[0].split(',').map(h=>h.toLowerCase().trim());
+            let count=0;
+            for(let i=1; i<lines.length; i++) {
+                const row = lines[i].split(',').map(c=>c.trim());
+                const item = {};
+                let hasSku = false;
+                pCols.forEach(col => {
+                    let idx = -1;
+                    for(let j=0; j<heads.length; j++) {
+                        if(heads[j].includes(col.key.toLowerCase()) || col.label.toLowerCase().includes(heads[j])) { idx=j; break; }
+                    }
+                    if(idx>-1) {
+                        const v = row[idx]||'';
+                        if(col.type==='number'||col.type==='dimension') item[col.key] = parseFloat(String(v).replace(/,/g,''))||0;
+                        else item[col.key] = String(v).trim();
+                        if(col.key==='asin' && item.asin) hasSku = true;
+                    } else {
+                        item[col.key] = col.type==='number'?0:'';
+                    }
+                });
+                if(hasSku) { pData.push(item); count++; }
+            }
+            p_saveData(); p_render(); p_msg(`✅ 导入 ${count} 条`);
+            document.getElementById('pFile').value = '';
+        };
+        r.readAsText(file);
+    }
+    function p_exportCSV() {
+        if(!pData.length) return p_msg('无数据', 'error');
+        const vis = pCols.filter(c=>c.visible);
+        let csv = vis.map(c=>c.label).join(',') + '\n';
+        pData.forEach(item => {
+            csv += vis.map(col => {
+                let val = item[col.key]||'';
+                if(typeof val === 'number') val = val.toFixed(2);
+                return val;
+            }).join(',') + '\n';
+        });
+        const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download = `产品_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+        p_msg('✅ 导出成功');
+    }
+
+    // 产品：配置与编辑弹窗
+    function p_openConfig() { document.getElementById('pConfigModal').style.display='flex'; const list = document.getElementById('pConfigList'); list.innerHTML = ''; pCols.forEach(c=>{ const d=document.createElement('div'); d.className='col-config-item'; d.innerHTML=`<input type="checkbox" ${c.visible?'checked':''} onchange="p_toggleVis('${c.key}',this.checked)" /><span>${c.label}</span>`; list.appendChild(d); }); }
+    function p_closeConfig() { document.getElementById('pConfigModal').style.display='none'; p_saveConfig(); p_renderForm(); p_render(); }
+    function p_toggleVis(key, checked) { const c = pCols.find(i=>i.key===key); if(c)c.visible=checked; }
+
+    function p_openEdit(idx) {
+        pEditIdx = idx; const item = pData[idx];
+        const container = document.getElementById('pEditForm'); container.innerHTML = '';
+        pCols.forEach(col => {
+            if(!col.visible) return;
+            const d = document.createElement('div'); d.className='form-group';
+            const val = item[col.key]||'';
+            d.innerHTML = `<label>${col.label}</label><input type="${col.type==='number'||col.type==='dimension'?'number':'text'}" id="p_edit_${col.key}" value="${val}" step="0.1" />`;
+            container.appendChild(d);
+        });
+        document.getElementById('pEditModal').style.display='flex';
+    }
+    function p_closeEdit() { document.getElementById('pEditModal').style.display='none'; }
+    function p_saveEdit() {
+        if(pEditIdx===null) return;
+        const item = pData[pEditIdx];
+        pCols.forEach(col => {
+            if(!col.visible) return;
+            const el = document.getElementById(`p_edit_${col.key}`);
+            if(el) {
+                const v = el.value.trim();
+                if(col.type==='number'||col.type==='dimension') item[col.key] = parseFloat(v)||0;
+                else item[col.key] = v;
+            }
+        });
+        p_saveData(); p_render(); p_closeEdit(); p_msg('✅ 已更新');
+    }
+
+    // ================================================================
+    // 3. 每日监控看板模块 (前缀: d_)
+    // ================================================================
+    const D_SALES_DEF = [
+        {key:'date',label:'日期',type:'date'},{key:'sku',label:'ASIN/SKU',type:'text'},
+        {key:'totalSales',label:'总销量',type:'number'},{key:'revenue',label:'销售额',type:'number'},
+        {key:'amzPrice',label:'售价',type:'number'},{key:'startDate',label:'活动开始',type:'date'},
+        {key:'discount',label:'折扣%',type:'number'},{key:'shouldPrice',label:'应显示价',type:'number'},
+        {key:'actualPrice',label:'实际价',type:'number'},{key:'reviews',label:'评论数',type:'number'},
+        {key:'rating',label:'评分',type:'number'},{key:'bsr',label:'大类排名',type:'number'},
+        {key:'subBsr',label:'小类排名',type:'number'},{key:'adSpSpend',label:'SP花费',type:'number'},
+        {key:'adSbvSpend',label:'SBV花费',type:'number'},{key:'adTotalSpend',label:'广告总花费',type:'number'},
+        {key:'adSales',label:'广告销量',type:'number'},{key:'natSales',label:'自然销量',type:'number'},
+        {key:'returnQty',label:'退货',type:'number'}
+    ];
+    const D_INV_DEF = [
+        {key:'sku',label:'ASIN',type:'text'},{key:'vcStock',label:'厂内库存',type:'number'},
+        {key:'transitStock',label:'在途',type:'number'},{key:'qy_LA',label:'千亚LA',type:'number'},
+        {key:'qy_TX',label:'千亚TX',type:'number'},{key:'qy_GA',label:'千亚GA',type:'number'},
+        {key:'qy_PA',label:'千亚PA',type:'number'},{key:'gc_Houston',label:'谷仓休斯顿',type:'number'},
+        {key:'gc_Atlanta',label:'谷仓亚特兰大',type:'number'},{key:'gc_CA',label:'谷仓加州',type:'number'},
+        {key:'gc_NJ',label:'谷仓新泽西',type:'number'},{key:'stockAge',label:'库龄(天)',type:'number'},
+        {key:'monthlyForecast',label:'月销预估',type:'number'},{key:'sellThrough',label:'动销比(月)',type:'number'}
+    ];
+    const D_STORAGE = 'amazon_all_data_key';
+    const D_SALES_CONFIG = 'amazon_sales_config';
+    const D_INV_CONFIG = 'amazon_inv_config';
+    let dData=[], dSalesCols=[], dInvCols=[], dEditIdx=null, dEditType='sales';
+
+    function d_loadConfig() {
+        dSalesCols = JSON.parse(localStorage.getItem(D_SALES_CONFIG)) || D_SALES_DEF.map(c=>({...c, visible:true}));
+        dInvCols = JSON.parse(localStorage.getItem(D_INV_CONFIG)) || D_INV_DEF.map(c=>({...c, visible:true}));
+    }
+    function d_saveConfig() { localStorage.setItem(D_SALES_CONFIG, JSON.stringify(dSalesCols)); localStorage.setItem(D_INV_CONFIG, JSON.stringify(dInvCols)); }
+
+    function d_loadData() {
+        const s = localStorage.getItem(D_STORAGE);
+        if(s) dData = JSON.parse(s);
+        else {
+            dData = [{ date:'2026-08-01', sku:'B08TEST01', totalSales:15, revenue:749.85, amzPrice:49.99, startDate:'2026-08-01', discount:20, shouldPrice:39.99, actualPrice:39.99, reviews:1250, rating:4.7, bsr:5432, subBsr:321, adSpSpend:50, adSbvSpend:10, adTotalSpend:60, adSales:5, natSales:10, returnQty:1, vcStock:200, transitStock:150, qy_LA:100, qy_TX:50, qy_GA:20, qy_PA:30, gc_Houston:40, gc_Atlanta:10, gc_CA:60, gc_NJ:20, stockAge:45 }];
+            d_saveData();
+        }
+    }
+    function d_saveData() { localStorage.setItem(D_STORAGE, JSON.stringify(dData)); }
+
+    function d_msg(t, type='success') {
+        const el = document.getElementById('dailyMsg');
+        el.textContent = t; el.className = 'msg ' + (type==='success'?'msg-success':'msg-error');
+        setTimeout(()=>el.className='msg', 4000);
+    }
+
+    // 【联动核心】跨表读取产品映射
+    function d_fetchMap() {
+        const master = localStorage.getItem('amazon_product_dashboard_data');
+        if(!master) return {};
+        try {
+            const items = JSON.parse(master);
+            const map = {};
+            items.forEach(p => {
+                const sku = p.asin || p.sku;
+                if(sku) map[sku] = { model: p.series || '', series: p.series || '' }; // 联动聚合
+            });
+            return map;
         } catch(e) { return {}; }
     }
-    return {};
-}
 
-// ---------- 工具函数 ----------
-function daily_parseCleanNumber(str) {
-    if (typeof str !== 'string') return typeof str === 'number' ? str : 0;
-    let cleaned = str.replace(/,/g, '').replace(/[$%¥€]/g, '').trim();
-    let num = parseFloat(cleaned);
-    return isNaN(num) ? 0 : num;
-}
-function daily_showMsg(text, type='success') {
-    const el = document.getElementById('dailyMsg');
-    el.textContent = text; el.className = 'msg ' + (type === 'success' ? 'msg-success' : 'msg-error');
-    setTimeout(() => { el.className = 'msg'; }, 4000);
-}
+    function d_renderAll() {
+        const start = document.getElementById('dStart').value;
+        const end = document.getElementById('dEnd').value;
+        const dim = document.getElementById('dDimension').value;
+        const filterRaw = document.getElementById('dFilter').value.trim();
+        const filterList = filterRaw ? filterRaw.split(',').map(s=>s.trim()) : [];
 
-// ---------- 选项卡切换 ----------
-function daily_switchTab(tab) {
-    document.getElementById('tabSalesBtn').classList.remove('active');
-    document.getElementById('tabInvBtn').classList.remove('active');
-    document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Btn').classList.add('active');
-    document.getElementById('tabPanelSales').classList.remove('active');
-    document.getElementById('tabPanelInv').classList.remove('active');
-    document.getElementById('tabPanel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
-}
-
-// ---------- 统一渲染函数 ----------
-function daily_renderAll() {
-    const start = document.getElementById('dailyStartDate').value;
-    const end = document.getElementById('dailyEndDate').value;
-    const dimension = document.getElementById('dailyDimension').value;
-    const filterRaw = document.getElementById('dailyFilterItems').value.trim();
-    const filterList = filterRaw ? filterRaw.split(',').map(s => s.trim()) : [];
-
-    let filteredData = dailyData.filter(d => {
-        if (start && d.date < start) return false;
-        if (end && d.date > end) return false;
-        return true;
-    });
-
-    // 从产品看板读取映射关系
-    const masterMap = daily_fetchMasterMappings();
-    // 补全映射
-    let enhancedData = filteredData.map(d => {
-        const map = masterMap[d.sku];
-        return { ...d, model: map ? map.model : (d.model || ''), series: map ? map.series : (d.series || '') };
-    });
-
-    let displayData = [];
-    if (dimension === 'asin') {
-        displayData = filterList.length > 0 ? enhancedData.filter(d => filterList.includes(d.sku)) : enhancedData;
-    } else if (dimension === 'model') {
-        const groups = {}; enhancedData.forEach(d => { const key = d.model || '未绑定型号'; if(!groups[key]) groups[key]=[]; groups[key].push(d); });
-        displayData = daily_aggregateGroups(groups);
-    } else if (dimension === 'series') {
-        const groups = {}; enhancedData.forEach(d => { const key = d.series || '未绑定系列'; if(!groups[key]) groups[key]=[]; groups[key].push(d); });
-        displayData = daily_aggregateGroups(groups);
-    }
-
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    const monthStart = todayStr.substring(0, 7) + '-01';
-    const daysSoFar = Math.max(1, Math.floor((new Date(todayStr) - new Date(monthStart)) / (1000*60*60*24)) + 1);
-
-    daily_renderSalesTable(displayData);
-    daily_renderInvTable(displayData, daysSoFar);
-}
-
-// ---------- 聚合逻辑 ----------
-function daily_aggregateGroups(groups) {
-    const results = [];
-    for (const key in groups) {
-        const items = groups[key];
-        const agg = { sku: key, model: key, series: key, 
-            totalSales:0, revenue:0, adSpSpend:0, adSbvSpend:0, adTotalSpend:0, adSales:0, natSales:0, returnQty:0,
-            vcStock:0, transitStock:0, qy_LA:0, qy_TX:0, qy_GA:0, qy_PA:0, gc_Houston:0, gc_Atlanta:0, gc_CA:0, gc_NJ:0, stockAge:0
-        };
-        let priceSum=0, priceCount=0, ratingSum=0, ratingCount=0, bsrSum=0, bsrCount=0, subBsrSum=0, subBsrCount=0, reviewsSum=0;
-        
-        items.forEach(item => {
-            for (const k in agg) {
-                if (['sku','model','series'].includes(k)) continue;
-                if (typeof agg[k] === 'number' && typeof item[k] === 'number') agg[k] += item[k];
-            }
-            if (item.amzPrice) { priceSum+=item.amzPrice; priceCount++; }
-            if (item.rating) { ratingSum+=item.rating; ratingCount++; }
-            if (item.bsr) { bsrSum+=item.bsr; bsrCount++; }
-            if (item.subBsr) { subBsrSum+=item.subBsr; subBsrCount++; }
-            if (item.reviews) { reviewsSum+=item.reviews; }
+        let filtered = dData.filter(d => {
+            if(start && d.date < start) return false;
+            if(end && d.date > end) return false;
+            return true;
         });
-        if (priceCount) agg.amzPrice = priceSum/priceCount;
-        if (ratingCount) agg.rating = ratingSum/ratingCount;
-        if (bsrCount) agg.bsr = bsrSum/bsrCount;
-        if (subBsrCount) agg.subBsr = subBsrSum/subBsrCount;
-        agg.reviews = reviewsSum;
-        results.push(agg);
-    }
-    return results;
-}
 
-// ---------- 渲染销售板块 ----------
-function daily_renderSalesTable(displayData) {
-    const thead = document.getElementById('dailyTableHead');
-    const tbody = document.getElementById('dailyTableBody');
-    const visibleCols = dailySalesCols.filter(c => c.visible);
-    thead.innerHTML = `<tr><th>#</th>${visibleCols.map(c=>`<th>${c.label}</th>`).join('')}<th>操作</th></tr>`;
-    if(displayData.length===0){ tbody.innerHTML=`<tr><td colspan="${visibleCols.length+2}">暂无销售数据</td></tr>`; return; }
-    tbody.innerHTML = '';
-    displayData.forEach((item, idx) => {
-        let html = `<td>${idx+1}</td>`;
-        visibleCols.forEach(col => {
-            let val = item[col.key] !== undefined ? item[col.key] : '';
-            if (col.key === 'acos' && item.adTotalSpend > 0) val = (item.adTotalSpend / (item.revenue || 1) * 100).toFixed(2) + '%';
-            if (typeof val === 'number') val = val.toFixed(2);
-            html += `<td>${val||'-'}</td>`;
-        });
-        html += `<td><button class="btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="daily_openEditModal(${idx},'sales')">✏️编辑</button></td>`;
-        tbody.innerHTML += `<tr>${html}</tr>`;
-    });
-}
+        const masterMap = d_fetchMap();
+        let enhanced = filtered.map(d => ({ ...d, model: masterMap[d.sku]?.model || '', series: masterMap[d.sku]?.series || '' }));
 
-// ---------- 渲染库存板块 ----------
-function daily_renderInvTable(displayData, daysSoFar) {
-    const thead = document.getElementById('invTableHead');
-    const tbody = document.getElementById('invTableBody');
-    const visibleCols = invCols.filter(c => c.visible);
-    thead.innerHTML = `<tr><th>#</th>${visibleCols.map(c=>`<th>${c.label}</th>`).join('')}<th>操作</th></tr>`;
-    if(displayData.length===0){ tbody.innerHTML=`<tr><td colspan="${visibleCols.length+2}">暂无库存数据</td></tr>`; return; }
-    tbody.innerHTML = '';
-    displayData.forEach((item, idx) => {
-        // 计算动销比和预估
-        const monthSales = item.totalSales || 0;
-        const avgDaily = daysSoFar > 0 ? monthSales / daysSoFar : 0;
-        const forecast = avgDaily * 30;
-        const totalSellable = (item.qy_LA||0)+(item.qy_TX||0)+(item.qy_GA||0)+(item.qy_PA||0)+(item.gc_Houston||0)+(item.gc_Atlanta||0)+(item.gc_CA||0)+(item.gc_NJ||0);
-        const sellThrough = forecast > 0 ? (totalSellable / forecast) : 0;
-
-        let html = `<td>${idx+1}</td>`;
-        visibleCols.forEach(col => {
-            let val = item[col.key] !== undefined ? item[col.key] : '';
-            if (col.key === 'monthlyForecast') val = forecast;
-            if (col.key === 'sellThrough') val = sellThrough;
-            if (typeof val === 'number') val = val.toFixed(2);
-            html += `<td>${val||'-'}</td>`;
-        });
-        html += `<td><button class="btn-secondary" style="padding:4px 8px;font-size:12px;" onclick="daily_openEditModal(${idx},'inventory')">✏️编辑</button></td>`;
-        tbody.innerHTML += `<tr>${html}</tr>`;
-    });
-}
-
-// ---------- 配置列 ----------
-function daily_openConfigModal() { document.getElementById('dailyConfigModal').style.display='flex'; daily_renderConfigModal(); }
-function daily_closeConfigModal() { document.getElementById('dailyConfigModal').style.display='none'; daily_saveConfig(); daily_renderAll(); }
-function daily_renderConfigModal() {
-    const list1 = document.getElementById('dailyConfigList'); list1.innerHTML = '';
-    dailySalesCols.forEach(c => { const div = document.createElement('div'); div.className='col-config-item'; div.innerHTML=`<input type="checkbox" ${c.visible?'checked':''} onchange="daily_toggleCol('sales','${c.key}',this.checked)" /><span>${c.label}</span>`; list1.appendChild(div); });
-    const list2 = document.getElementById('invConfigList'); list2.innerHTML = '';
-    invCols.forEach(c => { const div = document.createElement('div'); div.className='col-config-item'; div.innerHTML=`<input type="checkbox" ${c.visible?'checked':''} onchange="daily_toggleCol('inv','${c.key}',this.checked)" /><span>${c.label}</span>`; list2.appendChild(div); });
-}
-function daily_toggleCol(type, key, checked) {
-    if(type==='sales'){ const c=dailySalesCols.find(i=>i.key===key); if(c)c.visible=checked; }
-    else { const c=invCols.find(i=>i.key===key); if(c)c.visible=checked; }
-}
-
-// ---------- 添加/编辑 统一弹窗 ----------
-function daily_openAddModal(type) {
-    dailyEditIdx = null;
-    dailyEditType = type;
-    document.getElementById('dailyModalTitle').innerText = type==='sales' ? '➕ 添加日销售数据' : '➕ 添加/更新库存数据';
-    daily_renderAddEditForm(type);
-    document.getElementById('dailyAddEditModal').style.display='flex';
-}
-function daily_openEditModal(idx, type) {
-    dailyEditIdx = idx;
-    dailyEditType = type;
-    document.getElementById('dailyModalTitle').innerText = type==='sales' ? '✏️ 编辑日销售数据' : '✏️ 编辑库存数据';
-    daily_renderAddEditForm(type);
-    document.getElementById('dailyAddEditModal').style.display='flex';
-}
-function daily_closeAddEditModal() { document.getElementById('dailyAddEditModal').style.display='none'; dailyEditIdx=null; }
-function daily_renderAddEditForm(type) {
-    const container = document.getElementById('dailyAddEditForm');
-    container.innerHTML = '';
-    const cols = type==='sales' ? dailySalesCols : invCols;
-    const item = dailyEditIdx !== null ? dailyData[dailyEditIdx] : null;
-    cols.filter(c=>c.visible).forEach(col => {
-        const div = document.createElement('div'); div.className='form-group';
-        let val = item ? (item[col.key] !== undefined ? item[col.key] : '') : '';
-        let typeInput = col.type === 'number' ? 'number' : 'text';
-        if(col.key === 'date') typeInput = 'date';
-        div.innerHTML = `<label>${col.label}</label><input type="${typeInput}" id="d_ae_${col.key}" placeholder="${col.label}" value="${val}" ${typeInput==='number'?'step="0.01"':''} />`;
-        container.appendChild(div);
-    });
-}
-function daily_saveAddEdit() {
-    const cols = dailyEditType==='sales' ? dailySalesCols : invCols;
-    const newItem = {};
-    cols.filter(c=>c.visible).forEach(col => {
-        const el = document.getElementById(`d_ae_${col.key}`);
-        if(el) {
-            if(col.type === 'number') newItem[col.key] = daily_parseCleanNumber(el.value);
-            else newItem[col.key] = el.value.trim();
+        let display = [];
+        if(dim === 'asin') {
+            display = filterList.length ? enhanced.filter(d => filterList.includes(d.sku)) : enhanced;
+        } else if(dim === 'model') {
+            const g={}; enhanced.forEach(d=>{ const k=d.model||'未绑定'; if(!g[k])g[k]=[]; g[k].push(d); });
+            display = d_aggregate(g);
+        } else if(dim === 'series') {
+            const g={}; enhanced.forEach(d=>{ const k=d.series||'未绑定'; if(!g[k])g[k]=[]; g[k].push(d); });
+            display = d_aggregate(g);
         }
-    });
-    if(!newItem.sku) return daily_showMsg('ASIN/SKU 不能为空', 'error');
-    if(dailyEditIdx !== null) {
-        const oldItem = dailyData[dailyEditIdx];
-        const mergedItem = { ...oldItem, ...newItem };
-        dailyData[dailyEditIdx] = mergedItem;
-    } else {
-        const fullItem = {};
-        DAILY_SALES_COLS.forEach(c => fullItem[c.key] = c.type==='number'?0:'');
-        INVENTORY_COLS.forEach(c => fullItem[c.key] = c.type==='number'?0:'');
-        dailyData.push({ ...fullItem, ...newItem, date: newItem.date || new Date().toISOString().split('T')[0] });
+
+        const today = new Date(); const mStart = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-01';
+        const days = Math.max(1, Math.floor((new Date() - new Date(mStart))/(1000*60*60*24)) + 1);
+        d_renderTable(display, days);
     }
-    daily_saveData(); daily_closeAddEditModal(); daily_renderAll(); daily_showMsg('✅ 数据已保存！');
-}
 
-// ---------- 导入/导出/清空 ----------
-function daily_importCSV(event) {
-    const file = event.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const lines = e.target.result.split(/\r?\n/).filter(l=>l.trim());
-        if(lines.length<2) return daily_showMsg('格式错误', 'error');
-        const headers = lines[0].split(',').map(h=>h.toLowerCase().trim());
-        const dataRows = lines.slice(1).map(l=>l.split(',').map(c=>c.trim()));
-        let addCount=0;
-        dataRows.forEach(row => {
-            const newItem = {};
-            let hasSku = false;
-            [...dailySalesCols, ...invCols].forEach(col => {
-                let matchedIdx = -1;
-                for(let i=0; i<headers.length; i++) {
-                    if(headers[i].includes(col.key.toLowerCase()) || col.label.toLowerCase().includes(headers[i])) { matchedIdx=i; break; }
-                }
-                if(matchedIdx>-1) {
-                    const val = row[matchedIdx] !== undefined ? row[matchedIdx] : '';
-                    if(col.type === 'number') newItem[col.key] = daily_parseCleanNumber(val);
-                    else newItem[col.key] = String(val).trim();
-                } else {
-                    newItem[col.key] = col.type==='number'?0:'';
-                }
-                if(col.key === 'sku' && newItem.sku) hasSku = true;
+    function d_aggregate(groups) {
+        const res = [];
+        for(const key in groups) {
+            const items = groups[key];
+            const agg = { sku:key, model:key, series:key, totalSales:0,revenue:0,adTotalSpend:0,returnQty:0,qy_LA:0,qy_TX:0,qy_GA:0,qy_PA:0,gc_Houston:0,gc_Atlanta:0,gc_CA:0,gc_NJ:0,vcStock:0,transitStock:0 };
+            let pSum=0, pCnt=0, rSum=0, rCnt=0, bSum=0, bCnt=0;
+            items.forEach(item=>{
+                for(const k in agg) { if(['sku','model','series'].includes(k)) continue; if(typeof agg[k]==='number' && typeof item[k]==='number') agg[k]+=item[k]; }
+                if(item.amzPrice){pSum+=item.amzPrice; pCnt++;}
+                if(item.rating){rSum+=item.rating; rCnt++;}
+                if(item.bsr){bSum+=item.bsr; bCnt++;}
             });
-            if(hasSku) { dailyData.push(newItem); addCount++; }
+            if(pCnt) agg.amzPrice = pSum/pCnt;
+            if(rCnt) agg.rating = rSum/rCnt;
+            if(bCnt) agg.bsr = bSum/bCnt;
+            res.push(agg);
+        }
+        return res;
+    }
+
+    function d_renderTable(display, days) {
+        const thead = document.getElementById('dHead'), tbody = document.getElementById('dBody');
+        const vis = [...dSalesCols.filter(c=>c.visible), ...dInvCols.filter(c=>c.visible)];
+        thead.innerHTML = `<tr><th style="width:40px;">#</th>${vis.map(c=>`<th>${c.label}</th>`).join('')}<th style="width:100px;">操作</th></tr>`;
+        if(!display.length){ tbody.innerHTML=`<tr><td colspan="${vis.length+2}">暂无</td></tr>`; return; }
+        tbody.innerHTML = '';
+        display.forEach((item, idx) => {
+            const avg = days>0 ? (item.totalSales||0)/days : 0;
+            const forecast = avg*30;
+            const totalSell = (item.qy_LA||0)+(item.qy_TX||0)+(item.qy_GA||0)+(item.qy_PA||0)+(item.gc_Houston||0)+(item.gc_Atlanta||0)+(item.gc_CA||0)+(item.gc_NJ||0);
+            const sellThrough = forecast>0 ? (totalSell/forecast) : 0;
+
+            let html = `<td>${idx+1}</td>`;
+            vis.forEach(col => {
+                let val = item[col.key]||'';
+                if(col.key === 'monthlyForecast') val = forecast;
+                if(col.key === 'sellThrough') val = sellThrough;
+                if(typeof val === 'number') val = val.toFixed(2);
+                html += `<td>${val||'-'}</td>`;
+            });
+            html += `<td><button class="btn-secondary" style="padding:2px 8px;" onclick="d_openEdit(${idx},'sales')">✏️</button></td>`;
+            tbody.innerHTML += `<tr>${html}</tr>`;
         });
-        daily_saveData(); daily_renderAll(); daily_showMsg(`✅ 成功导入 ${addCount} 条记录！`);
-        document.getElementById('dailyFileInput').value = '';
+    }
+
+    // 每日：配置、添加、编辑等弹窗
+    function d_openConfig() {
+        document.getElementById('dConfigModal').style.display='flex';
+        const list = document.getElementById('dConfigList'); list.innerHTML = '';
+        [...dSalesCols, ...dInvCols].forEach(c=>{
+            const d=document.createElement('div'); d.className='col-config-item';
+            d.innerHTML=`<input type="checkbox" ${c.visible?'checked':''} onchange="d_toggle('${c.key}',this.checked)" /><span>${c.label}</span>`;
+            list.appendChild(d);
+        });
+    }
+    function d_closeConfig() { document.getElementById('dConfigModal').style.display='none'; d_saveConfig(); d_renderAll(); }
+    function d_toggle(key, checked) {
+        const c1 = dSalesCols.find(i=>i.key===key); if(c1){c1.visible=checked;return;}
+        const c2 = dInvCols.find(i=>i.key===key); if(c2)c2.visible=checked;
+    }
+
+    function d_openAdd(type) { dEditIdx=null; dEditType=type; document.getElementById('dModalTitle').innerText=type==='sales'?'➕ 添日销':'➕ 添库存'; d_renderForm(type); document.getElementById('dAddEditModal').style.display='flex'; }
+    function d_openEdit(idx, type) { dEditIdx=idx; dEditType=type; document.getElementById('dModalTitle').innerText='✏️ 编辑'; d_renderForm(type); document.getElementById('dAddEditModal').style.display='flex'; }
+    function d_closeAddEdit() { document.getElementById('dAddEditModal').style.display='none'; }
+    function d_renderForm(type) {
+        const c = document.getElementById('dAddEditForm'); c.innerHTML = '';
+        const cols = type==='sales'?dSalesCols:dInvCols;
+        const item = dEditIdx!==null ? dData[dEditIdx] : null;
+        cols.filter(c=>c.visible).forEach(col=>{
+            const d=document.createElement('div'); d.className='form-group';
+            const val = item ? (item[col.key]||'') : '';
+            const typeInput = col.type==='number'?'number':'text';
+            d.innerHTML = `<label>${col.label}</label><input type="${typeInput}" id="d_ae_${col.key}" value="${val}" step="0.1" />`;
+            c.appendChild(d);
+        });
+    }
+    function d_saveAddEdit() {
+        const cols = dEditType==='sales'?dSalesCols:dInvCols;
+        const item = {};
+        cols.filter(c=>c.visible).forEach(col=>{
+            const el = document.getElementById(`d_ae_${col.key}`);
+            if(el) {
+                const v = el.value.trim();
+                item[col.key] = col.type==='number' ? (parseFloat(v)||0) : v;
+            }
+        });
+        if(!item.sku) return d_msg('ASIN不能为空', 'error');
+        if(dEditIdx!==null) { Object.assign(dData[dEditIdx], item); }
+        else { dData.push({ ...item, date: item.date || new Date().toISOString().split('T')[0] }); }
+        d_saveData(); d_closeAddEdit(); d_renderAll(); d_msg('✅ 已保存');
+    }
+
+    function d_importCSV(e) {
+        const file = e.target.files[0]; if(!file) return;
+        const r = new FileReader();
+        r.onload = function(ev) {
+            const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+            if(lines.length<2) return d_msg('格式错误', 'error');
+            const heads = lines[0].split(',').map(h=>h.toLowerCase().trim());
+            let cnt=0;
+            for(let i=1; i<lines.length; i++) {
+                const row = lines[i].split(',').map(c=>c.trim());
+                const item = {}; let hasSku=false;
+                [...dSalesCols, ...dInvCols].forEach(col=>{
+                    let idx=-1;
+                    for(let j=0;j<headers.length;j++){ if(headers[j].includes(col.key.toLowerCase())||col.label.toLowerCase().includes(headers[j])){idx=j;break;} }
+                    if(idx>-1){ const v=row[idx]||''; item[col.key]=col.type==='number'?(parseFloat(String(v).replace(/,/g,''))||0):String(v).trim(); if(col.key==='sku'&&item.sku)hasSku=true; }
+                    else item[col.key]=col.type==='number'?0:'';
+                });
+                if(hasSku){ dData.push(item); cnt++; }
+            }
+            d_saveData(); d_renderAll(); d_msg(`✅ 导入 ${cnt} 条`);
+            document.getElementById('dFile').value='';
+        };
+        r.readAsText(file);
+    }
+    function d_exportCSV() {
+        if(!dData.length) return d_msg('无数据', 'error');
+        const vis = [...dSalesCols.filter(c=>c.visible), ...dInvCols.filter(c=>c.visible)];
+        let csv = vis.map(c=>c.label).join(',') + '\n';
+        dData.forEach(item => { csv += vis.map(col=>{ let v=item[col.key]||''; if(typeof v==='number')v=v.toFixed(2); return v; }).join(',') + '\n'; });
+        const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+        const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download = `日数据_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+        d_msg('✅ 导出成功');
+    }
+    function d_clearAll() { if(confirm('⚠️ 确认清空全部？')){ dData=[]; d_saveData(); d_renderAll(); d_msg('已清空'); } }
+
+    // ================================================================
+    // 4. 最终统一初始化触发器
+    // ================================================================
+    window.onload = function() {
+        // 1. 初始化产品
+        p_loadConfig(); p_loadData(); p_renderForm(); p_render();
+        // 2. 初始化每日
+        d_loadConfig(); d_loadData(); d_renderAll();
+        // 3. 默认监听每日日期切换
+        document.getElementById('dStart').addEventListener('change', d_renderAll);
+        document.getElementById('dEnd').addEventListener('change', d_renderAll);
     };
-    reader.readAsText(file);
-}
-function daily_exportCSV() {
-    if(!dailyData.length) return daily_showMsg('无可导出的数据', 'error');
-    const visibleCols = dailySalesCols.filter(c=>c.visible).concat(invCols.filter(c=>c.visible));
-    let csv = visibleCols.map(c=>c.label).join(',') + '\n';
-    dailyData.forEach(item => {
-        const row = visibleCols.map(col => {
-            let val = item[col.key] !== undefined ? item[col.key] : '';
-            if(typeof val === 'number') val = val.toFixed(2);
-            return val;
-        });
-        csv += row.join(',') + '\n';
-    });
-    const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
-    const link = document.createElement('a'); link.href=URL.createObjectURL(blob); link.download = `日数据_${new Date().toISOString().split('T')[0]}.csv`; link.click();
-    daily_showMsg('✅ 导出成功！');
-}
-function daily_clearAll() { if(confirm('确定清空所有数据？')){ dailyData=[]; daily_saveData(); daily_renderAll(); daily_showMsg('已清空'); } }
-
-// 日期栏监听
-document.getElementById('dailyStartDate').addEventListener('change', daily_renderAll);
-document.getElementById('dailyEndDate').addEventListener('change', daily_renderAll);
-document.getElementById('dailyDimension').addEventListener('change', daily_renderAll);
-document.getElementById('dailyFilterItems').addEventListener('input', daily_renderAll);
-
-</script>
+    </script>
 </body>
 </html>
